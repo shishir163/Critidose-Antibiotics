@@ -42,7 +42,9 @@ button{font-family:inherit}
   backdrop-filter:blur(16px);border-bottom:1px solid var(--line);
   padding-top:env(safe-area-inset-top);
 }
-.pbar .in{max-width:660px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.pbar .in{max-width:660px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:12px}
+.brand,.pstat,.caret{cursor:pointer}
+.brand small{transition:color .15s}
 .brand{font-size:15px;font-weight:650;letter-spacing:-.01em;flex:none}
 .brand small{display:block;font-size:10.5px;color:var(--faint);font-weight:400;letter-spacing:.01em}
 .pstat{margin-left:auto;display:flex;align-items:center;gap:10px;text-align:right}
@@ -152,14 +154,14 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ PATIENT BAR ============ -->
 <div class="pbar">
-  <div class="in" onclick="openPatient()">
-    <div class="brand">CritiDose<small>Right dose, right patient, 3 AM</small></div>
-    <div class="pstat">
+  <div class="in">
+    <div class="brand" id="brand" onclick="nav('home')" role="button" tabindex="0">CritiDose<small id="brandsub">Right dose, right patient, 3 AM</small></div>
+    <div class="pstat" onclick="openPatient()" role="button" tabindex="0">
       <span class="pchip hide" id="pchip-rrt"></span>
       <span class="pchip hide" id="pchip-cp"></span>
       <div><div class="pnum mono" id="pnum">—</div><small id="plab">CrCl mL/min</small></div>
     </div>
-    <div class="caret" id="caret">▾</div>
+    <div class="caret" id="caret" onclick="openPatient()">▾</div>
   </div>
 </div>
 
@@ -167,6 +169,7 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ PATIENT SHEET ============ -->
 <section id="v-patient" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Patient</h2>
   <p class="lede">Fill this once at the start of the round. Every dose in the app reads from it.</p>
 
@@ -228,12 +231,19 @@ details[open]>summary::before{content:'▾ '}
 <section id="v-home">
   <h2 id="greet">Where to?</h2>
   <p class="lede" id="homesub">Set the patient once, then everything else is two taps away.</p>
+  <div class="searchbar" style="margin-top:14px">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qg" type="search" placeholder="Search everything — Zosyn, hyperkalaemia, Renvela…" oninput="globalSearch()">
+  </div>
+  <div id="gresults"></div>
   <div class="tiles" id="tiles"></div>
   <div class="disc">CritiDose <span id="ver"></span> · works offline · data stays on this device</div>
 </section>
 
 <!-- ============ ANTIBIOTICS ============ -->
 <section id="v-abx" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Antibiotics</h2>
   <p class="lede" id="abxsub"></p>
   <div class="searchbar">
@@ -250,6 +260,7 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ INFUSIONS ============ -->
 <section id="v-inf" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Infusions</h2>
   <p class="lede" id="infsub">Set your own dilution once. The mL/hr follows it from then on.</p>
   <div class="searchbar">
@@ -265,6 +276,7 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ FORMULARY ============ -->
 <section id="v-frm" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Formulary</h2>
   <p class="lede" id="frmsub"></p>
   <div class="searchbar">
@@ -276,8 +288,42 @@ details[open]>summary::before{content:'▾ '}
   <div id="frmrows"></div>
 </section>
 
+<!-- ============ DISEASE-WISE ============ -->
+<section id="v-dis" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
+  <h2>Disease-wise</h2>
+  <p class="lede" id="dissub"></p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qd" type="search" placeholder="Pneumonia, meningitis, SBP…" oninput="drawDis()">
+  </div>
+  <div class="chips" id="chips-dg"></div>
+  <div id="disrows"></div>
+</section>
+<section id="v-disdet" class="hide"></section>
+
+<!-- ============ PROTOCOLS ============ -->
+<section id="v-proto" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
+  <h2>Protocols</h2>
+  <p class="lede" id="protosub"></p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qp" type="search" placeholder="Hyperkalaemia, DKA, snake bite…" oninput="drawProto()">
+  </div>
+  <div class="chips" id="chips-pg"></div>
+  <div id="protorows"></div>
+</section>
+<section id="v-protodet" class="hide"></section>
+
+<!-- ============ NEW ENTRY ============ -->
+<section id="v-add" class="hide"></section>
+
 <!-- ============ CALCULATORS ============ -->
 <section id="v-calc" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Calculators</h2>
   <p class="lede">These read the patient bar. Change a number there and everything here follows.</p>
   <div id="calcbody"></div>
@@ -285,6 +331,7 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ SCORES ============ -->
 <section id="v-scores" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Scores</h2>
   <p class="lede">Child-Pugh feeds straight into the liver line on every drug page.</p>
   <div class="card">
@@ -319,8 +366,9 @@ details[open]>summary::before{content:'▾ '}
 
 <!-- ============ MY NOTES ============ -->
 <section id="v-mine" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>My entries</h2>
-  <p class="lede">Notes you write on a drug page collect here. They live on this device and survive every app update.</p>
+  <p class="lede">Your own drugs, protocols and notes. All of it lives on this device.</p>
   <div id="minebody"></div>
 </section>
 
@@ -332,14 +380,16 @@ details[open]>summary::before{content:'▾ '}
 <script src="data/antibiotics.js"></script>
 <script src="data/infusions.js"></script>
 <script src="data/formulary.js"></script>
+<script src="data/disease.js"></script>
+<script src="data/protocols.js"></script>
 <script>
 /* ============================================================
    CritiDose — app logic
    ============================================================ */
-var APP_VERSION = '2.0 · step 2';
+var APP_VERSION = '3.1 · step 3';
 
 var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null,
-         ig:'all', sys:'', inf:null, iwt:'actual'};
+         ig:'all', sys:'', inf:null, iwt:'actual', dg:'all', pg:'all', addType:'frm'};
 var DIL = {};
 var NOTES = {};
 var CP = {1:1,2:1,3:1,4:1,5:1};
@@ -508,9 +558,9 @@ function clearPatient(){
 function openPatient(){ nav('patient') }
 
 /* ---------- routing ---------- */
-var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','calc','scores','mine','soon'];
+var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','dis','disdet','proto','protodet','add','calc','scores','mine','soon'];
 function nav(v,arg){
-  var h = v==='drug' ? '#drug/'+arg : (v==='soon' ? '#soon/'+arg : '#'+v);
+  var h = (arg!==undefined && arg!==null) ? '#'+v+'/'+arg : '#'+v;
   if(location.hash!==h) location.hash=h; else route();
 }
 function route(){
@@ -520,12 +570,19 @@ function route(){
   S.view=v;
   VIEWS.forEach(function(x){ $('v-'+x).classList.toggle('hide', x!==v) });
   $('caret').textContent = v==='patient' ? '▴' : '▾';
-  if(v==='home'){ homeSub() }
+  $('brandsub').textContent = v==='home' ? 'Right dose, right patient, 3 AM' : '‹ Back to the dashboard';
+  $('brandsub').style.color = v==='home' ? '' : 'var(--info)';
+  if(v==='home'){ homeSub(); if($('qg')) globalSearch() }
   if(v==='abx'){ drawChips(); drawList() }
   if(v==='drug'){ showDrug(parseInt(arg,10)) }
   if(v==='inf'){ drawIGroups(); drawInf() }
   if(v==='infdrug'){ showInf(parseInt(arg,10)) }
   if(v==='frm'){ drawSystems(); drawFrm() }
+  if(v==='dis'){ drawDGroups(); drawDis() }
+  if(v==='disdet'){ showDis(parseInt(arg,10)) }
+  if(v==='proto'){ drawPGroups(); drawProto() }
+  if(v==='protodet'){ showProto(parseInt(arg,10)) }
+  if(v==='add'){ drawAdd(arg) }
   if(v==='calc'){ drawCalc() }
   if(v==='mine'){ drawMine() }
   if(v==='soon'){ drawSoon(arg) }
@@ -542,9 +599,9 @@ var TILES=[
    '<path d="M12 3v6M9 9h6l1 9a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3l1-9Z"/><path d="M8.6 15h6.8"/>'],
   ['Formulary','#60A5FA','The everyday ICU drug list','frm','ready',
    '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V4Z"/><path d="M5 16h13"/>'],
-  ['Protocols','#FBBF24','Unit protocols, step by step','protocols','step 3',
+  ['Protocols','#FBBF24','Unit protocols, step by step','proto','ready',
    '<path d="M8 4h8v3H8zM6 7h12v13H6z"/><path d="M9.5 12h5M9.5 16h5"/>'],
-  ['Disease-wise','#34D399','What to start, by site','disease','step 3',
+  ['Disease-wise','#34D399','What to start, by site','dis','ready',
    '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'],
   ['Theory','#A78BFA','Spectrum, classes, bacteriology','theory','step 4',
    '<path d="M12 4 4 8l8 4 8-4-8-4Z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/>'],
@@ -620,7 +677,7 @@ function drawList(){
       '<div class="bar" style="background:'+classCol(d.c)+'"></div>'+
       '<div style="min-width:0"><div class="rname">'+dot+esc(d.n)+
       (d.lvl?'<span class="lab">LEVEL</span>':'')+
-      (NOTES['abx:'+d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      (d.mine?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+(NOTES['abx:'+d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
       '<div class="rsub">'+esc(d.tag)+'</div></div>'+
       '<div class="rgo">›</div></div>';
   }).join('') : '<div class="empty">Nothing matches that.<br>Try the generic name, or clear the filters above.</div>';
@@ -684,6 +741,10 @@ function showDrug(i,keepScroll){
     h+='<div class="flag '+(bad?'adj':'info')+'"><div class="ic">◈</div><div><b>Child-Pugh '+S.cp+'</b> — '+esc(d.hep)+
        (bad&&v!==null&&v<50?'<br>Both kidney and liver are impaired. Two rules apply; take the stricter one.':'')+'</div></div>';
   }
+  if(d.mine && d.renal){
+    h+='<div class="flag adj"><div class="ic">◇</div><div><b>Renal</b> — '+esc(d.renal)+'<br>'+
+       'Your own entry, so the app cannot work the dose out for you. Read the line and decide.</div></div>';
+  }
   if(d.lvl){
     h+='<div class="flag info"><div class="ic">🧪</div><div><b>Levels</b> — '+esc(d.lvl)+'</div></div>';
   }
@@ -719,6 +780,7 @@ function showDrug(i,keepScroll){
   h+='<h3>Your note</h3><div class="card">'+
      noteBox('abx:'+d.n)+'</div>';
 
+  if(d.mine) h+='<button class="btn ghost" onclick="delMine(\'abx\',\''+d.n.replace(/'/g,"\\'")+'\')">Delete this entry</button>';
   h+='<div class="disc">Check against your unit\'s antibiogram and the insert of the brand in your hand.</div>';
 
   $('v-drug').innerHTML=h;
@@ -943,7 +1005,7 @@ function drawInf(){
     return '<div class="row" onclick="nav(\'infdrug\','+i+')" role="button" tabindex="0">'+
       '<div class="bar" style="background:'+igroupCol(d.k)+'"></div>'+
       '<div style="min-width:0"><div class="rname">'+esc(d.n)+
-      (DIL[d.n]?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+
+      (d.mine?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+(DIL[d.n]?'<span class="lab" style="color:var(--ok)">DIL</span>':'')+
       (NOTES['inf:'+d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
       '<div class="rsub">'+esc(sub)+'</div></div><div class="rgo">›</div></div>';
   }).join('') : '<div class="empty">Nothing matches that.</div>';
@@ -1024,6 +1086,7 @@ function showInf(i, keep){
     }).join('')+'</div>';
   }
   h+='<h3>Your note</h3><div class="card">'+noteBox('inf:'+d.n)+'</div>';
+  if(d.mine) h+='<button class="btn ghost" onclick="delMine(\'inf\',\''+d.n.replace(/'/g,"\\'")+'\')">Delete this entry</button>';
   h+='<div class="disc">The concentration in the box is the one you set. Check it against the label on the syringe before you trust the number.</div>';
 
   $('v-infdrug').innerHTML=h;
@@ -1115,7 +1178,7 @@ function drawFrm(){
       '<div style="display:flex;gap:11px;padding:12px;cursor:pointer" onclick="FOPEN=(FOPEN==='+i+'?-1:'+i+');drawFrm()">'+
       '<div class="bar" style="background:'+sysCol(f.s[0])+'"></div>'+
       '<div style="min-width:0"><div class="rname">'+esc(f.n)+
-      (NOTES['frm:'+f.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      (f.mine?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+(NOTES['frm:'+f.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
       '<div class="rsub" style="white-space:normal">'+esc(f.d)+'</div></div>'+
       '<div class="rgo">'+(open?'▾':'›')+'</div></div>';
     if(open){
@@ -1125,12 +1188,403 @@ function drawFrm(){
       if(f.al) h+='<div style="font-size:12.5px;color:var(--faint);margin-bottom:10px">Also called '+esc(f.al.split(' ').join(', '))+'</div>';
       if(f.note) h+='<div class="flag info" style="margin-bottom:10px"><div class="ic">▸</div><div>'+esc(f.note)+'</div></div>';
       h+=noteBox('frm:'+f.n);
+      if(f.mine) h+='<button class="btn ghost" style="margin-top:8px" onclick="delMine(\'frm\',\''+f.n.replace(/'/g,"\\'")+'\')">Delete this entry</button>';
       h+='</div>';
     }
     return h+'</div>';
   }).join('') : '<div class="empty">Nothing matches that.<br>Tell me what is missing and it goes in the data file.</div>';
 }
 
+
+
+/* ============================================================
+   LINKING — a drug name anywhere becomes a tap
+   ============================================================ */
+function findAny(name){
+  var i;
+  for(i=0;i<DRUGS.length;i++)     if(DRUGS[i].n===name)     return ['drug',i];
+  for(i=0;i<INFUSIONS.length;i++) if(INFUSIONS[i].n===name) return ['infdrug',i];
+  for(i=0;i<FORMULARY.length;i++) if(FORMULARY[i].n===name) return ['frm',i];
+  return null;
+}
+function drugChips(names){
+  if(!names||!names.length) return '';
+  return '<div class="tagline">'+names.map(function(n){
+    var hit=findAny(n);
+    if(!hit) return '<span class="tg">'+esc(n)+'</span>';
+    var go = hit[0]==='frm' ? "FOPEN="+hit[1]+";nav('frm')" : "nav('"+hit[0]+"',"+hit[1]+")";
+    return '<span class="tg" style="border-color:var(--info);color:var(--info);cursor:pointer" onclick="'+go+'">'+esc(n)+' ›</span>';
+  }).join('')+'</div>';
+}
+
+/* ============================================================
+   DISEASE — empiric therapy by site
+   ============================================================ */
+function dgCol(k){ for(var i=0;i<DGROUPS.length;i++) if(DGROUPS[i][0]===k) return DGROUPS[i][2]; return '#94A3B8' }
+function dgName(k){ for(var i=0;i<DGROUPS.length;i++) if(DGROUPS[i][0]===k) return DGROUPS[i][1]; return k }
+function drawDGroups(){
+  var g=[['all','All']].concat(DGROUPS.map(function(x){return [x[0],x[1]]}));
+  $('chips-dg').innerHTML=g.map(function(c){
+    var on=(S.dg||'all')===c[0], col=c[0]==='all'?'#60A5FA':dgCol(c[0]);
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.dg=\''+c[0]+'\';drawDGroups();drawDis()">'+c[1]+'</div>';
+  }).join('');
+}
+function drawDis(){
+  var q=($('qd').value||'').toLowerCase().trim(), list=[];
+  for(var i=0;i<DISEASES.length;i++){
+    var d=DISEASES[i];
+    if((S.dg||'all')!=='all' && d.k!==S.dg) continue;
+    if(q && (d.n+' '+(d.al||'')+' '+d.sub).toLowerCase().indexOf(q)<0) continue;
+    list.push([d,i]);
+  }
+  $('dissub').textContent='Starting points only. Your unit\u2019s antibiogram beats every card here.';
+  $('disrows').innerHTML=list.length ? list.map(function(p){
+    return '<div class="row" onclick="nav(\'disdet\','+p[1]+')" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+dgCol(p[0].k)+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(p[0].n)+'</div>'+
+      '<div class="rsub" style="white-space:normal">'+esc(p[0].sub)+'</div></div>'+
+      '<div class="rgo">\u203a</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.</div>';
+}
+function showDis(i){
+  if(isNaN(i)||!DISEASES[i]){ nav('dis'); return }
+  var d=DISEASES[i], col=dgCol(d.k), h='';
+  h+='<button class="back" onclick="nav(\'dis\')">\u2039 All sites</button>';
+  h+='<div style="display:flex;align-items:center;gap:11px;margin:6px 0 12px">'+
+     '<div class="bar" style="background:'+col+';height:30px"></div>'+
+     '<div><div style="font-size:21px;font-weight:650;letter-spacing:-.015em">'+esc(d.n)+'</div>'+
+     '<div class="rsub">'+dgName(d.k)+'</div></div></div>';
+  h+='<div class="flag info" style="margin-bottom:12px"><div class="ic">?</div><div>'+esc(d.when)+'</div></div>';
+
+  h+='<h3>Start with</h3><div class="card">'+d.first.map(function(f,ix){
+    return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14.5px">'+
+      '<span style="color:'+col+';flex:none">\u25b8</span><span>'+esc(f)+'</span></div>'; }).join('')+'</div>';
+
+  if(d.alt&&d.alt.length){
+    h+='<h3>Change it when</h3><div class="card">'+d.alt.map(function(f,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:var(--adj);flex:none">\u25b8</span><span>'+esc(f)+'</span></div>'; }).join('')+'</div>';
+  }
+  h+='<div class="card"><div class="kv"><div class="k">Duration</div><div class="v">'+esc(d.dur)+'</div></div></div>';
+
+  h+='<h3>Dose it for this patient</h3>'+drugChips(d.drugs);
+
+  if(d.notes&&d.notes.length){
+    h+='<h3>Worth remembering</h3><div class="card">'+d.notes.map(function(n,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:'+col+';flex:none">\u25b8</span><span>'+esc(n)+'</span></div>'; }).join('')+'</div>';
+  }
+  h+='<h3>Your note</h3><div class="card">'+noteBox('dis:'+d.n)+'</div>';
+  h+='<div class="disc">Empiric choice is a local decision. Check these against your own culture data before they become habit.</div>';
+  $('v-disdet').innerHTML=h;
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   PROTOCOLS
+   ============================================================ */
+function pgCol(k){ for(var i=0;i<PGROUPS.length;i++) if(PGROUPS[i][0]===k) return PGROUPS[i][2]; return '#94A3B8' }
+function pgName(k){ for(var i=0;i<PGROUPS.length;i++) if(PGROUPS[i][0]===k) return PGROUPS[i][1]; return k }
+function drawPGroups(){
+  var g=[['all','All']].concat(PGROUPS.map(function(x){return [x[0],x[1]]}));
+  $('chips-pg').innerHTML=g.map(function(c){
+    var on=(S.pg||'all')===c[0], col=c[0]==='all'?'#60A5FA':pgCol(c[0]);
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.pg=\''+c[0]+'\';drawPGroups();drawProto()">'+c[1]+'</div>';
+  }).join('');
+}
+function drawProto(){
+  var q=($('qp').value||'').toLowerCase().trim(), list=[];
+  for(var i=0;i<PROTOCOLS.length;i++){
+    var p=PROTOCOLS[i];
+    if((S.pg||'all')!=='all' && p.k!==S.pg) continue;
+    if(q && (p.n+' '+(p.al||'')).toLowerCase().indexOf(q)<0) continue;
+    list.push([p,i]);
+  }
+  $('protosub').textContent=PROTOCOLS.length+' protocols \u00b7 add your unit\u2019s own with the button below';
+  $('protorows').innerHTML=(list.length ? list.map(function(pr){
+    return '<div class="row" onclick="nav(\'protodet\','+pr[1]+')" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+pgCol(pr[0].k)+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(pr[0].n)+
+      (pr[0].mine?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+'</div>'+
+      '<div class="rsub" style="white-space:normal">'+esc(pr[0].when).slice(0,90)+'</div></div>'+
+      '<div class="rgo">\u203a</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.</div>')+
+  '<button class="btn ghost" style="margin-top:10px" onclick="nav(\'add\',\'proto\')">+ Add a protocol</button>';
+}
+function showProto(i){
+  if(isNaN(i)||!PROTOCOLS[i]){ nav('proto'); return }
+  var p=PROTOCOLS[i], col=pgCol(p.k), h='';
+  h+='<button class="back" onclick="nav(\'proto\')">\u2039 All protocols</button>';
+  h+='<div style="display:flex;align-items:center;gap:11px;margin:6px 0 12px">'+
+     '<div class="bar" style="background:'+col+';height:30px"></div>'+
+     '<div><div style="font-size:21px;font-weight:650;letter-spacing:-.015em">'+esc(p.n)+'</div>'+
+     '<div class="rsub">'+pgName(p.k)+(p.mine?' \u00b7 your entry':'')+'</div></div></div>';
+  h+='<div class="flag info" style="margin-bottom:12px"><div class="ic">?</div><div>'+esc(p.when)+'</div></div>';
+
+  h+='<h3>Steps</h3><div class="card">'+p.steps.map(function(s,ix){
+    return '<div style="display:flex;gap:12px;padding:11px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14.5px">'+
+      '<span style="color:'+col+';flex:none;font-weight:650;font-variant-numeric:tabular-nums;min-width:16px">'+(ix+1)+'</span>'+
+      '<span>'+esc(s)+'</span></div>'; }).join('')+'</div>';
+
+  if(p.cautions&&p.cautions.length){
+    h+='<h3>Where it goes wrong</h3><div class="card" style="border-color:rgba(251,191,36,.35)">'+p.cautions.map(function(c,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:var(--adj);flex:none">!</span><span>'+esc(c)+'</span></div>'; }).join('')+'</div>';
+  }
+  if(p.drugs&&p.drugs.length) h+='<h3>Drugs in this protocol</h3>'+drugChips(p.drugs);
+  h+='<h3>Your note</h3><div class="card">'+noteBox('pro:'+p.n)+'</div>';
+  if(p.mine) h+='<button class="btn ghost" onclick="delMine(\'proto\',\''+esc(p.n).replace(/'/g,"\\'")+'\')">Delete this protocol</button>';
+  $('v-protodet').innerHTML=h;
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   MY ENTRIES — forms, CSV, backup
+   ============================================================ */
+var MY={abx:[],inf:[],frm:[],proto:[]};
+var BASE={};
+function rebuild(){
+  DRUGS     = BASE.abx.concat(MY.abx);
+  INFUSIONS = BASE.inf.concat(MY.inf);
+  FORMULARY = BASE.frm.concat(MY.frm);
+  PROTOCOLS = BASE.proto.concat(MY.proto);
+}
+function saveMy(){ save('mydata', JSON.stringify(MY)); rebuild() }
+function delMine(type,name){
+  if(!confirm('Remove '+name+'?')) return;
+  MY[type]=MY[type].filter(function(x){ return x.n!==name });
+  saveMy();
+  nav(type==='proto'?'proto':type==='abx'?'abx':type==='inf'?'inf':'frm');
+}
+
+var ADDFORMS={
+  abx:['Antibiotic', [
+    ['a_n','Generic name','Cefoperazone-sulbactam',1],
+    ['a_al','Other names, space separated','Sulcef Sulperazone',0],
+    ['a_tag','What it is for','Broad Gram-negative, biliary',0],
+    ['a_dose','Usual ICU dose','2 g IV q12h',1],
+    ['a_renal','Renal adjustment','Cap sulbactam at 1 g q12h below CrCl 30',0],
+    ['a_ihd','Dialysis','',0],
+    ['a_crrt','CRRT','',0],
+    ['a_hep','Liver','',0],
+    ['a_note','Anything worth remembering','',0]
+  ]],
+  inf:['Infusion', [
+    ['i_n','Drug name','Nitroglycerin',1],
+    ['i_al','Other names','GTN Tridil',0],
+    ['i_amt2','Amount in the syringe (number)','50',1],
+    ['i_vol2','In how many mL','50',1],
+    ['i_lo','Lowest usual dose','5',1],
+    ['i_hi','Highest usual dose','200',1],
+    ['i_renal','Renal','No adjustment',0],
+    ['i_hep2','Liver','No adjustment',0],
+    ['i_note','Anything worth remembering','',0]
+  ]],
+  frm:['Formulary drug', [
+    ['f_n','Drug name','Sevelamer',1],
+    ['f_al','Other names','Renvela Renagel',0],
+    ['f_d','Dose','800 mg PO with meals',1],
+    ['f_note','Anything worth remembering','',0]
+  ]],
+  proto:['Protocol', [
+    ['p_n','Protocol name','Massive transfusion',1],
+    ['p_when','When it applies','',1],
+    ['p_steps','Steps — one per line','',1],
+    ['p_caut','Where it goes wrong — one per line','',0],
+    ['p_drugs','Drugs to link, space separated','Tranexamic acid',0]
+  ]]
+};
+function drawAdd(type){
+  type = ADDFORMS[type] ? type : 'frm';
+  S.addType=type;
+  var f=ADDFORMS[type], h='';
+  h+='<button class="back" onclick="nav(\'mine\')">\u2039 My entries</button>';
+  h+='<h2>New '+f[0].toLowerCase()+'</h2>';
+  h+='<p class="lede">Yours stays on this device. It shows up in the lists with a MINE marker and survives every app update.</p>';
+  h+='<div class="chips">'+Object.keys(ADDFORMS).map(function(k){
+    return '<div class="chip" style="'+(k===type?'border-color:var(--info);color:var(--info);font-weight:650':'')+
+      '" onclick="nav(\'add\',\''+k+'\')">'+ADDFORMS[k][0]+'</div>' }).join('')+'</div>';
+  h+='<div class="card">';
+  f[1].forEach(function(row){
+    var big = row[0]==='p_steps'||row[0]==='p_caut'||row[0]==='a_note'||row[0]==='i_note'||row[0]==='f_note'||row[0]==='p_when';
+    h+='<div style="margin-bottom:11px"><label for="'+row[0]+'">'+row[1]+(row[3]?'':'  (optional)')+'</label>'+
+       (big ? '<textarea id="'+row[0]+'" placeholder="'+row[2]+'"></textarea>'
+            : '<input id="'+row[0]+'" placeholder="'+row[2]+'">')+'</div>';
+  });
+  if(type==='inf'){
+    h+='<div style="margin-bottom:11px"><label for="i_au">Amount unit</label><select id="i_au">'+
+       ['mg','mcg','units'].map(function(u){return '<option>'+u+'</option>'}).join('')+'</select></div>';
+    h+='<div style="margin-bottom:11px"><label for="i_unit">Dose unit</label><select id="i_unit">'+
+       ['mcg/kg/min','mcg/kg/hr','mcg/min','mcg/hr','mg/kg/hr','mg/hr','units/hr'].map(function(u){return '<option>'+u+'</option>'}).join('')+'</select></div>';
+    h+='<div style="margin-bottom:11px"><label for="i_k">Group</label><select id="i_k">'+
+       IGROUPS.map(function(g){return '<option value="'+g[0]+'">'+g[1]+'</option>'}).join('')+'</select></div>';
+  }
+  if(type==='frm'){
+    h+='<div><label>System tags</label><div class="chips" id="systags">'+SYSTEMS.map(function(sy){
+      return '<div class="chip" data-sy="'+sy[0]+'" onclick="this.classList.toggle(\'picked\');this.style.borderColor=this.classList.contains(\'picked\')?\''+sy[2]+'\':\'\';this.style.color=this.classList.contains(\'picked\')?\''+sy[2]+'\':\'\'">'+sy[1]+'</div>';
+    }).join('')+'</div></div>';
+  }
+  if(type==='proto'){
+    h+='<div style="margin-bottom:11px"><label for="p_k">Group</label><select id="p_k">'+
+       PGROUPS.map(function(g){return '<option value="'+g[0]+'">'+g[1]+'</option>'}).join('')+'</select></div>';
+  }
+  h+='</div><button class="btn" onclick="saveEntry()">Save</button>';
+  h+='<div class="disc">Nothing here is checked against a reference. What you type is what you will read at 3 AM.</div>';
+  $('v-add').innerHTML=h;
+  window.scrollTo(0,0);
+}
+function val(id){ var e=$(id); return e?e.value.trim():'' }
+function lines(id){ return val(id).split('\n').map(function(x){return x.trim()}).filter(Boolean) }
+function saveEntry(){
+  var t=S.addType;
+  if(t==='abx'){
+    if(!val('a_n')||!val('a_dose')) return alert('The name and the usual dose are needed.');
+    MY.abx.push({n:val('a_n'), al:val('a_al'), c:'other', tag:val('a_tag')||'Your entry', tg:[],
+      bands:[[999, val('a_dose'), 'ok']], renal:val('a_renal'),
+      ihd:val('a_ihd')||'\u2014', crrt:val('a_crrt')||'\u2014', hep:val('a_hep')||'\u2014',
+      notes:val('a_note')?[val('a_note')]:[], mine:true});
+  }
+  if(t==='inf'){
+    var amt=parseFloat(val('i_amt2')), vol=parseFloat(val('i_vol2')),
+        lo=parseFloat(val('i_lo')), hi=parseFloat(val('i_hi'));
+    if(!val('i_n')||!isFinite(amt)||!isFinite(vol)||!isFinite(lo)||!isFinite(hi))
+      return alert('Name, amount, volume and the dose range all need numbers.');
+    MY.inf.push({n:val('i_n'), al:val('i_al'), k:val('i_k')||'other', unit:val('i_unit'),
+      lo:lo, hi:hi, amt:amt, au:val('i_au'), vol:vol, pre:[amt],
+      renal:val('i_renal')||'\u2014', hep:val('i_hep2')||'\u2014',
+      notes:val('i_note')?[val('i_note')]:[], mine:true});
+  }
+  if(t==='frm'){
+    if(!val('f_n')||!val('f_d')) return alert('The name and the dose are needed.');
+    var sys=[];
+    document.querySelectorAll('#systags .picked').forEach(function(e){ sys.push(e.getAttribute('data-sy')) });
+    if(!sys.length) sys=['other'];
+    MY.frm.push({n:val('f_n'), al:val('f_al'), d:val('f_d'), s:sys, note:val('f_note'), mine:true});
+  }
+  if(t==='proto'){
+    if(!val('p_n')||!lines('p_steps').length) return alert('A name and at least one step are needed.');
+    MY.proto.push({n:val('p_n'), al:'', k:val('p_k')||'emergency', when:val('p_when'),
+      steps:lines('p_steps'), cautions:lines('p_caut'),
+      drugs:val('p_drugs')?val('p_drugs').split(/\s{2,}|,/).map(function(x){return x.trim()}).filter(Boolean):[],
+      mine:true});
+  }
+  saveMy();
+  nav(t==='abx'?'abx':t==='inf'?'inf':t==='frm'?'frm':'proto');
+}
+
+/* ---------- CSV ---------- */
+function parseCSV(text){
+  var rows=[], row=[], cur='', q=false, i, c;
+  for(i=0;i<text.length;i++){
+    c=text[i];
+    if(q){
+      if(c==='"'&&text[i+1]==='"'){ cur+='"'; i++ }
+      else if(c==='"'){ q=false }
+      else cur+=c;
+    } else {
+      if(c==='"') q=true;
+      else if(c===','){ row.push(cur); cur='' }
+      else if(c==='\n'){ row.push(cur); rows.push(row); row=[]; cur='' }
+      else if(c!=='\r') cur+=c;
+    }
+  }
+  if(cur.length||row.length){ row.push(cur); rows.push(row) }
+  return rows.filter(function(r){ return r.join('').trim().length });
+}
+function importCSV(text){
+  var rows=parseCSV(text);
+  if(!rows.length) return alert('Nothing to read in that file.');
+  var head=rows[0].map(function(x){return x.trim().toLowerCase()});
+  var start = head.indexOf('name')>-1 ? 1 : 0;
+  var known=SYSTEMS.map(function(s){return s[0]});
+  var added=0, skipped=0;
+  for(var i=start;i<rows.length;i++){
+    var r=rows[i];
+    var n=(r[0]||'').trim(), dose=(r[2]||'').trim();
+    if(!n||!dose){ skipped++; continue }
+    var sys=(r[3]||'').split(/[;|]/).map(function(x){return x.trim().toLowerCase()}).filter(function(x){return known.indexOf(x)>-1});
+    if(!sys.length) sys=['other'];
+    MY.frm=MY.frm.filter(function(x){ return x.n!==n });
+    MY.frm.push({n:n, al:(r[1]||'').trim(), d:dose, s:sys, note:(r[4]||'').trim(), mine:true});
+    added++;
+  }
+  saveMy(); drawMine();
+  alert(added+' drug'+(added===1?'':'s')+' imported'+(skipped?', '+skipped+' row(s) skipped':'')+'.');
+}
+function onCSVFile(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(){ importCSV(String(rd.result)) };
+  rd.readAsText(f);
+}
+function download(name, text, type){
+  var blob=new Blob([text],{type:type||'text/plain'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove() },500);
+}
+function csvTemplate(){
+  download('critidose-formulary-template.csv',
+    'name,aliases,dose,systems,note\n'+
+    'Sevelamer,Renvela Renagel,800 mg PO with meals,renal,Phosphate binder without calcium\n'+
+    'Carvedilol,Carvista,3.125-25 mg PO BD,cardiac;hepatic,\n'+
+    '\n# systems: '+SYSTEMS.map(function(s){return s[0]}).join(' ')+'\n',
+    'text/csv');
+}
+function backup(){
+  download('critidose-backup-'+new Date().toISOString().slice(0,10)+'.json',
+    JSON.stringify({v:2, notes:NOTES, mydata:MY, dilutions:DIL, patient:read('pt')}, null, 1),
+    'application/json');
+}
+function onRestoreFile(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var d=JSON.parse(String(rd.result));
+      if(!confirm('Restore this backup? It replaces your current notes, entries and dilutions.')) return;
+      NOTES=d.notes||{}; MY=d.mydata||{abx:[],inf:[],frm:[],proto:[]}; DIL=d.dilutions||{};
+      ['abx','inf','frm','proto'].forEach(function(k){ if(!MY[k]) MY[k]=[] });
+      save('notes',JSON.stringify(NOTES)); save('dilutions',JSON.stringify(DIL)); saveMy();
+      drawMine();
+      alert('Restored.');
+    }catch(e){ alert('That file could not be read.') }
+  };
+  rd.readAsText(f);
+}
+
+/* ============================================================
+   GLOBAL SEARCH
+   ============================================================ */
+function globalSearch(){
+  var q=($('qg').value||'').toLowerCase().trim();
+  var box=$('gresults');
+  if(!q){ box.innerHTML=''; $('tiles').classList.remove('hide'); return }
+  $('tiles').classList.add('hide');
+  var out=[], i;
+  function push(label,col,name,sub,go){ out.push([label,col,name,sub,go]) }
+  for(i=0;i<DRUGS.length;i++) if((DRUGS[i].n+' '+(DRUGS[i].al||'')+' '+DRUGS[i].tag).toLowerCase().indexOf(q)>-1)
+    push('Antibiotic', classCol(DRUGS[i].c), DRUGS[i].n, DRUGS[i].tag, "nav('drug',"+i+")");
+  for(i=0;i<INFUSIONS.length;i++) if((INFUSIONS[i].n+' '+(INFUSIONS[i].al||'')).toLowerCase().indexOf(q)>-1)
+    push('Infusion', igroupCol(INFUSIONS[i].k), INFUSIONS[i].n, INFUSIONS[i].lo+'\u2013'+INFUSIONS[i].hi+' '+INFUSIONS[i].unit, "nav('infdrug',"+i+")");
+  for(i=0;i<FORMULARY.length;i++) if((FORMULARY[i].n+' '+(FORMULARY[i].al||'')).toLowerCase().indexOf(q)>-1)
+    push('Formulary', sysCol(FORMULARY[i].s[0]), FORMULARY[i].n, FORMULARY[i].d, "FOPEN="+i+";nav('frm')");
+  for(i=0;i<PROTOCOLS.length;i++) if((PROTOCOLS[i].n+' '+(PROTOCOLS[i].al||'')).toLowerCase().indexOf(q)>-1)
+    push('Protocol', pgCol(PROTOCOLS[i].k), PROTOCOLS[i].n, pgName(PROTOCOLS[i].k), "nav('protodet',"+i+")");
+  for(i=0;i<DISEASES.length;i++) if((DISEASES[i].n+' '+(DISEASES[i].al||'')+' '+DISEASES[i].sub).toLowerCase().indexOf(q)>-1)
+    push('Empiric', dgCol(DISEASES[i].k), DISEASES[i].n, DISEASES[i].sub, "nav('disdet',"+i+")");
+
+  box.innerHTML = out.length ? out.slice(0,40).map(function(r){
+    return '<div class="row" onclick="'+r[4]+'" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+r[1]+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(r[2])+'</div>'+
+      '<div class="rsub" style="white-space:normal">'+r[0]+' \u00b7 '+esc(r[3])+'</div></div>'+
+      '<div class="rgo">\u203a</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.<br>Try a brand name, or the generic.</div>';
+}
 
 /* ---------- standalone dose/rate converter ---------- */
 var CALC={amt:4, vol:50, unit:'mcg/kg/min', dose:0.1};
@@ -1170,28 +1624,48 @@ function paintCalcWork(d,dose,rate,w,fam){
 
 /* ---------- my notes ---------- */
 function drawMine(){
-  var keys=Object.keys(NOTES);
-  if(!keys.length){
-    $('minebody').innerHTML='<div class="empty">No notes yet.<br>Open any drug, scroll to the bottom and write what your unit actually does.</div>';
-    return;
-  }
-  var LABEL={abx:['Antibiotics','abx'], inf:['Infusions','inf'], frm:['Formulary','frm']};
-  var groups={abx:[],inf:[],frm:[]};
-  keys.forEach(function(k){
-    var pre=k.indexOf(':')>-1?k.split(':')[0]:'abx';
-    var name=k.indexOf(':')>-1?k.slice(k.indexOf(':')+1):k;
-    if(!groups[pre]) groups[pre]=[];
-    groups[pre].push([name,NOTES[k]]);
-  });
   var h='';
-  ['abx','inf','frm'].forEach(function(pre){
-    if(!groups[pre].length) return;
-    h+='<h3>'+LABEL[pre][0]+'</h3>';
+  h+='<div class="chips" style="padding-bottom:12px">'+
+     [['abx','+ Antibiotic'],['inf','+ Infusion'],['frm','+ Drug'],['proto','+ Protocol']].map(function(k){
+       return '<div class="chip" style="border-color:var(--info);color:var(--info)" onclick="nav(\'add\',\''+k[0]+'\')">'+k[1]+'</div>';
+     }).join('')+'</div>';
+
+  /* --- what you have added --- */
+  var LBL={abx:['Antibiotics','drug'], inf:['Infusions','infdrug'], frm:['Formulary','frm'], proto:['Protocols','protodet']};
+  var any=false;
+  ['abx','inf','frm','proto'].forEach(function(t){
+    if(!MY[t].length) return;
+    any=true;
+    h+='<h3>'+LBL[t][0]+' you added</h3>';
+    h+=MY[t].map(function(e){
+      var live = t==='abx'?DRUGS : t==='inf'?INFUSIONS : t==='frm'?FORMULARY : PROTOCOLS;
+      var idx=-1; for(var i=0;i<live.length;i++) if(live[i].n===e.n) idx=i;
+      var go = t==='frm' ? "FOPEN="+idx+";nav('frm')" : "nav('"+LBL[t][1]+"',"+idx+")";
+      var sub = t==='abx'? e.bands[0][1] : t==='inf'? (e.lo+'–'+e.hi+' '+e.unit) : t==='frm'? e.d : (e.steps.length+' steps');
+      return '<div class="row"><div class="bar" style="background:var(--ok)"></div>'+
+        '<div style="min-width:0" onclick="'+go+'"><div class="rname">'+esc(e.n)+'</div>'+
+        '<div class="rsub" style="white-space:normal">'+esc(sub)+'</div></div>'+
+        '<button style="margin-left:auto;background:none;border:0;color:var(--faint);font-size:19px;cursor:pointer" onclick="delMine(\''+t+'\',\''+e.n.replace(/'/g,"\\'")+'\')">×</button></div>';
+    }).join('');
+  });
+  if(!any) h+='<div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">Nothing added yet. Anything you add appears in the normal lists with a MINE marker, and it is never overwritten when the app updates.</div>';
+
+  /* --- notes --- */
+  var LABEL={abx:['Antibiotics','drug'], inf:['Infusions','infdrug'], frm:['Formulary','frm'], dis:['Empiric cards','disdet'], pro:['Protocols','protodet']};
+  var groups={};
+  Object.keys(NOTES).forEach(function(k){
+    var pre = k.indexOf(':')>-1 ? k.split(':')[0] : 'abx';
+    var name = k.indexOf(':')>-1 ? k.slice(k.indexOf(':')+1) : k;
+    (groups[pre]=groups[pre]||[]).push([name, NOTES[k]]);
+  });
+  ['abx','inf','frm','dis','pro'].forEach(function(pre){
+    if(!groups[pre]||!groups[pre].length) return;
+    h+='<h3>Notes — '+LABEL[pre][0].toLowerCase()+'</h3>';
     h+=groups[pre].map(function(pair){
       var name=pair[0], txt=pair[1], idx=-1, go='';
-      if(pre==='abx'){ for(var i=0;i<DRUGS.length;i++) if(DRUGS[i].n===name) idx=i; if(idx>=0) go="nav('drug',"+idx+")" }
-      if(pre==='inf'){ for(var j=0;j<INFUSIONS.length;j++) if(INFUSIONS[j].n===name) idx=j; if(idx>=0) go="nav('infdrug',"+idx+")" }
-      if(pre==='frm'){ for(var m=0;m<FORMULARY.length;m++) if(FORMULARY[m].n===name) idx=m; if(idx>=0) go="FOPEN="+idx+";nav('frm')" }
+      var live = pre==='abx'?DRUGS : pre==='inf'?INFUSIONS : pre==='frm'?FORMULARY : pre==='dis'?DISEASES : PROTOCOLS;
+      for(var i=0;i<live.length;i++) if(live[i].n===name) idx=i;
+      if(idx>=0) go = pre==='frm' ? "FOPEN="+idx+";nav('frm')" : "nav('"+LABEL[pre][1]+"',"+idx+")";
       return '<div class="card">'+
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
         '<div style="font-size:15.5px;font-weight:650">'+esc(name)+'</div>'+
@@ -1199,6 +1673,8 @@ function drawMine(){
         '</div><div style="font-size:14px;white-space:pre-wrap;color:var(--dim)">'+esc(txt)+'</div></div>';
     }).join('');
   });
+
+  /* --- dilutions --- */
   var dils=Object.keys(DIL);
   if(dils.length){
     h+='<h3>My dilutions</h3><div class="card ladder">'+dils.map(function(n){
@@ -1207,14 +1683,29 @@ function drawMine(){
       return '<div><span>'+esc(n)+'</span><span class="mono">'+DIL[n].amt+' '+au+' in '+DIL[n].vol+' mL</span></div>';
     }).join('')+'</div>';
   }
-  h+='<div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">Adding whole new drugs, and importing a CSV, arrives in step 3.</div>';
+
+  /* --- CSV and backup --- */
+  h+='<h3>Import a list</h3><div class="card">'+
+     '<div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-bottom:11px">'+
+     'A CSV with the columns <b>name, aliases, dose, systems, note</b>. Systems are separated by a semicolon. '+
+     'A name that already exists in your own entries is replaced, not duplicated.</div>'+
+     '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer">Choose a CSV file'+
+     '<input type="file" accept=".csv,text/csv" style="display:none" onchange="onCSVFile(this)"></label>'+
+     '<button class="btn ghost" onclick="csvTemplate()">Download the template</button></div>';
+
+  h+='<h3>Backup</h3><div class="card">'+
+     '<div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-bottom:11px">'+
+     'Everything you have typed — notes, entries and dilutions — in one file. '+
+     'Clearing the browser data on this phone wipes all of it, so take one occasionally.</div>'+
+     '<button class="btn ghost" onclick="backup()">Save a backup file</button>'+
+     '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer;margin-top:6px">Restore from a backup'+
+     '<input type="file" accept=".json,application/json" style="display:none" onchange="onRestoreFile(this)"></label></div>';
+
   $('minebody').innerHTML=h;
 }
 
 /* ---------- not-yet views ---------- */
 var SOON={
-  protocols:['Protocols','Step 3','Your unit protocols, written as steps with the cautions attached.'],
-  disease:['Disease-wise','Step 3','What to start, by site of infection — pneumonia, UTI, meningitis, intra-abdominal. Tap a drug on the card and it opens at this patient\'s dose.'],
   theory:['Theory','Step 4','Bacteriology, mechanism-wise classes, spectrum grids and the steroid converter.']
 };
 function drawSoon(k){
@@ -1236,6 +1727,10 @@ function drawSoon(k){
   });
   if(migrated) save('notes', JSON.stringify(NOTES));
   try{ var dl=read('dilutions'); if(dl) DIL=JSON.parse(dl)||{} }catch(e){}
+  BASE={abx:DRUGS.slice(), inf:INFUSIONS.slice(), frm:FORMULARY.slice(), proto:PROTOCOLS.slice()};
+  try{ var md=read('mydata'); if(md) MY=JSON.parse(md)||MY }catch(e){}
+  ['abx','inf','frm','proto'].forEach(function(k){ if(!MY[k]) MY[k]=[] });
+  rebuild();
   var iw=read('iwt'); if(iw) S.iwt=iw;
   loadPatient();
   ['age','wt','ht','cr'].forEach(function(id){ $(id).addEventListener('input',refresh) });

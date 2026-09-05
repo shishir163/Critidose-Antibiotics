@@ -1,4 +1,4 @@
-# CritiDose — ধাপ ২
+# CritiDose — ধাপ ৩
 
 Right drug, right dose, right patient — even at 3 AM.
 
@@ -8,7 +8,11 @@ CrCl · IBW · AdjBW, Child-Pugh, alias সহ সার্চ, ৯টা টা
 **ধাপ ২** — ৩১টা infusion (নিজের dilution বসিয়ে mL/hr, দুদিকেই কাজ করে),
 ১৫০টা ওষুধের system-tagged formulary, আর আলাদা dose ↔ mL/hr converter।
 
-বাকি চারটে টাইল খোলে, ভেতরে কোন ধাপে কী আসছে লেখা আছে।
+**ধাপ ৩** — ১৭টা empiric card (site অনুযায়ী কী দিয়ে শুরু), ১৬টা protocol,
+নিজের ওষুধ ও protocol যোগ করার ফর্ম, CSV import, backup/restore,
+আর ড্যাশবোর্ডে সবকিছুর সার্চ।
+
+Theory টাইলটা ধাপ ৪-এ আসছে।
 
 ---
 
@@ -19,6 +23,8 @@ index.html                 অ্যাপ — UI আর হিসাব
 data/antibiotics.js        অ্যান্টিবায়োটিক — ডোজ বদলাতে হলে এই ফাইল
 data/infusions.js          infusion — dilution ডিফল্ট আর রেঞ্জ
 data/formulary.js          ১৫০টা ওষুধ, system ট্যাগসহ
+data/disease.js            empiric therapy by site
+data/protocols.js          protocol
 manifest.webmanifest       হোম স্ক্রিনে বসার তথ্য
 sw.js                      নেট ছাড়া চালানোর জন্য
 icons/                     আইকন
@@ -53,9 +59,14 @@ GitHub-এ ফাইল বদলালে পরেরবার নেট থ�
 
 ## আপনার লেখা
 
-Patient-এর তথ্য, প্রতিটা ড্রাগের নোট, আর আপনার সেভ করা dilution — সবই ফোনেই থাকে, সার্ভারে যায় না।
-অ্যাপ আপডেট হলেও মোছে না। ব্রাউজারের ডেটা মুছে ফেললে যাবে —
-Export/Restore ধাপ ৪-এ আসছে।
+Patient-এর তথ্য, নোট, আপনার যোগ করা ওষুধ-protocol আর সেভ করা dilution — সবই ফোনেই থাকে,
+সার্ভারে যায় না। অ্যাপ আপডেট হলেও মোছে না।
+
+ব্রাউজারের ডেটা মুছে ফেললে সব যাবে। তাই **My entries → Backup** থেকে মাঝেমধ্যে
+একটা ফাইল নামিয়ে রাখবেন। ঐ ফাইল দিয়েই আবার ফেরানো যায়।
+
+**CSV import** — My entries-এ template নামানোর বোতাম আছে।
+কলাম: name, aliases, dose, systems, note। System একাধিক হলে সেমিকোলন দিয়ে।
 
 ---
 
