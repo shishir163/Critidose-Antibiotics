@@ -329,6 +329,24 @@ td.first{font-weight:600;color:var(--ink)}
 <!-- ============ NEW ENTRY ============ -->
 <section id="v-add" class="hide"></section>
 
+<!-- ============ RESPIRATORY PANEL ============ -->
+<section id="v-resp" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
+  <h2>Respiratory panel</h2>
+  <p class="lede">Tick what came back DETECTED. The answer is sorted into treat, depends, and leave alone — because most positives here do not need a drug.</p>
+  <div id="respbody"></div>
+</section>
+
+<!-- ============ MOLECULAR PANEL ============ -->
+<section id="v-panel" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
+  <h2>Molecular panel</h2>
+  <p class="lede">Tick what the BioFire report shows and what is running now. The suggestions follow IDSA guidance, filtered to what your unit stocks.</p>
+  <div class="chips"><div class="chip" style="border-color:var(--info);color:var(--info)" onclick="nav('stock')">What we stock ›</div></div>
+  <div id="panelbody"></div>
+</section>
+<section id="v-stock" class="hide"></section>
+
 <!-- ============ THEORY ============ -->
 <section id="v-theory" class="hide">
   <button class="back" onclick="nav('home')">‹ Dashboard</button>
@@ -404,11 +422,13 @@ td.first{font-weight:600;color:var(--ink)}
 <script src="data/disease.js"></script>
 <script src="data/protocols.js"></script>
 <script src="data/theory.js"></script>
+<script src="data/panel.js"></script>
+<script src="data/respiratory.js"></script>
 <script>
 /* ============================================================
    CritiDose — app logic
    ============================================================ */
-var APP_VERSION = '4.1 · step 4';
+var APP_VERSION = '5.2 · panels';
 
 var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null,
          ig:'all', sys:'', inf:null, iwt:'actual', dg:'all', pg:'all', addType:'frm',
@@ -581,7 +601,7 @@ function clearPatient(){
 function openPatient(){ nav('patient') }
 
 /* ---------- routing ---------- */
-var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','dis','disdet','proto','protodet','theory','theorydet','add','calc','scores','mine','soon'];
+var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','dis','disdet','proto','protodet','theory','theorydet','panel','stock','resp','add','calc','scores','mine','soon'];
 function nav(v,arg){
   var h = (arg!==undefined && arg!==null) ? '#'+v+'/'+arg : '#'+v;
   if(location.hash!==h) location.hash=h; else route();
@@ -608,6 +628,9 @@ function route(){
   if(v==='add'){ drawAdd(arg) }
   if(v==='theory'){ drawTGroups(); drawTheory() }
   if(v==='theorydet'){ showTheory(parseInt(arg,10)) }
+  if(v==='panel'){ drawPanel() }
+  if(v==='stock'){ drawStock() }
+  if(v==='resp'){ drawResp() }
   if(v==='calc'){ drawCalc() }
   if(v==='mine'){ drawMine() }
   if(v==='soon'){ drawSoon(arg) }
@@ -635,7 +658,11 @@ var TILES=[
   ['Scores','#FB923C','Child-Pugh now, more later','scores','ready',
    '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>'],
   ['My entries','#F0ABFC','Your own notes on any drug','mine','ready',
-   '<path d="M4 20h16"/><path d="M14.5 4.5 19 9 9 19H4.5V14.5Z"/>']
+   '<path d="M4 20h16"/><path d="M14.5 4.5 19 9 9 19H4.5V14.5Z"/>'],
+  ['Molecular panel','#F87171','BioFire genes to a regimen','panel','ready',
+   '<path d="M7 4c0 5 10 11 10 16M17 4c0 5-10 11-10 16"/><path d="M8.5 8h7M8.5 16h7"/>'],
+  ['Respiratory panel','#38BDF8','What to treat, what to leave','resp','ready',
+   '<path d="M12 4v7"/><path d="M12 11c0 5-3 9-5 9s-2.5-2-2.5-5S6 8 8 8"/><path d="M12 11c0 5 3 9 5 9s2.5-2 2.5-5S18 8 16 8"/>']
 ];
 function drawTiles(){
   $('tiles').innerHTML=TILES.map(function(t){
@@ -1560,24 +1587,71 @@ function csvTemplate(){
 }
 function backup(){
   download('critidose-backup-'+new Date().toISOString().slice(0,10)+'.json',
-    JSON.stringify({v:2, notes:NOTES, mydata:MY, dilutions:DIL, patient:read('pt')}, null, 1),
+    JSON.stringify({v:3, saved:new Date().toISOString(), notes:NOTES, mydata:MY,
+                    dilutions:DIL, stock:STOCK, patient:read('pt')}, null, 1),
     'application/json');
 }
 function onRestoreFile(input){
   var f=input.files&&input.files[0]; if(!f) return;
   var rd=new FileReader();
   rd.onload=function(){
-    try{
-      var d=JSON.parse(String(rd.result));
-      if(!confirm('Restore this backup? It replaces your current notes, entries and dilutions.')) return;
-      NOTES=d.notes||{}; MY=d.mydata||{abx:[],inf:[],frm:[],proto:[]}; DIL=d.dilutions||{};
-      ['abx','inf','frm','proto'].forEach(function(k){ if(!MY[k]) MY[k]=[] });
-      save('notes',JSON.stringify(NOTES)); save('dilutions',JSON.stringify(DIL)); saveMy();
-      drawMine();
-      alert('Restored.');
-    }catch(e){ alert('That file could not be read.') }
+    var d;
+    try{ d=JSON.parse(String(rd.result)) }catch(e){ alert('That file could not be read.'); return }
+    if(!d || (!d.notes && !d.mydata)){ alert('That does not look like a CritiDose backup.'); return }
+
+    var inNotes=Object.keys(d.notes||{}).length;
+    var inEntries=['abx','inf','frm','proto'].reduce(function(t,k){ return t+((d.mydata&&d.mydata[k])||[]).length },0);
+    var hereNotes=Object.keys(NOTES).length;
+    var hereEntries=['abx','inf','frm','proto'].reduce(function(t,k){ return t+MY[k].length },0);
+    var when=d.saved?(' saved '+d.saved.slice(0,10)):'';
+
+    PENDING=d;
+    $('restorebox').innerHTML=
+      '<div class="card" style="border-color:var(--info)">'+
+      '<div style="font-size:15px;font-weight:650;margin-bottom:8px">Backup file'+esc(when)+'</div>'+
+      '<div class="ladder" style="margin-bottom:12px">'+
+      '<div><span>Notes in the file</span><span class="mono">'+inNotes+'</span></div>'+
+      '<div><span>Notes on this device</span><span class="mono">'+hereNotes+'</span></div>'+
+      '<div><span>Entries in the file</span><span class="mono">'+inEntries+'</span></div>'+
+      '<div><span>Entries on this device</span><span class="mono">'+hereEntries+'</span></div>'+
+      '</div>'+
+      '<button class="btn" onclick="applyRestore(true)">Merge \u2014 keep both, the file wins on a clash</button>'+
+      '<button class="btn ghost" onclick="applyRestore(false)">Replace \u2014 wipe this device first</button>'+
+      '<button class="btn ghost" onclick="PENDING=null;$(\'restorebox\').innerHTML=\'\'">Cancel</button>'+
+      '</div>';
+    $('restorebox').scrollIntoView({behavior:'smooth', block:'nearest'});
   };
   rd.readAsText(f);
+}
+var PENDING=null;
+function applyRestore(merge){
+  var d=PENDING; if(!d) return;
+  if(!merge && !confirm('Replace everything on this device with the backup? Anything typed here since the backup is lost.')) return;
+
+  if(merge){
+    Object.keys(d.notes||{}).forEach(function(k){ NOTES[k]=d.notes[k] });
+    ['abx','inf','frm','proto'].forEach(function(k){
+      ((d.mydata&&d.mydata[k])||[]).forEach(function(e){
+        MY[k]=MY[k].filter(function(x){ return x.n!==e.n });
+        MY[k].push(e);
+      });
+    });
+    Object.keys(d.dilutions||{}).forEach(function(k){ DIL[k]=d.dilutions[k] });
+  } else {
+    NOTES=d.notes||{};
+    MY=d.mydata||{abx:[],inf:[],frm:[],proto:[]};
+    ['abx','inf','frm','proto'].forEach(function(k){ if(!MY[k]) MY[k]=[] });
+    DIL=d.dilutions||{};
+  }
+  if(d.stock) Object.keys(d.stock).forEach(function(k){ STOCK[k]=d.stock[k] });
+
+  save('notes',JSON.stringify(NOTES));
+  save('dilutions',JSON.stringify(DIL));
+  save('stock',JSON.stringify(STOCK));
+  saveMy();
+  PENDING=null;
+  drawMine();
+  alert(merge?'Merged.':'Restored.');
 }
 
 /* ============================================================
@@ -1807,6 +1881,346 @@ function drawScoreView(){
   $('sc-other').innerHTML=h;
 }
 
+
+/* ============================================================
+   MOLECULAR PANEL — turn a BioFire-style result into suggestions
+   ============================================================ */
+var PSEL = {orgs:{}, genes:{}, current:{}};
+
+function pOrgClass(k){ for(var i=0;i<PORGS.length;i++) if(PORGS[i][0]===k) return PORGS[i][2]; return 'other' }
+function pOrgName(k){ for(var i=0;i<PORGS.length;i++) if(PORGS[i][0]===k) return PORGS[i][1]; return k }
+function pGene(k){ for(var i=0;i<PGENES.length;i++) if(PGENES[i][0]===k) return PGENES[i]; return null }
+function inStock(n){ return STOCK[n]!==false }
+
+function drawPanel(){
+  var h='';
+  h+='<div class="card"><label>Organisms detected</label><div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:0">'+
+     PORGS.map(function(o){
+       var on=!!PSEL.orgs[o[0]];
+       return '<div class="chip" style="'+(on?'border-color:var(--ok);color:var(--ok);font-weight:650':'')+
+         '" onclick="PSEL.orgs[\''+o[0]+'\']=!PSEL.orgs[\''+o[0]+'\'];drawPanel()">'+esc(o[1].split(' ')[0])+
+         (o[0]==='acineto'?' spp.':'')+'</div>';
+     }).join('')+'</div></div>';
+
+  h+='<div class="card"><label>Resistance genes detected</label><div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:0">'+
+     PGENES.map(function(g){
+       var on=!!PSEL.genes[g[0]];
+       return '<div class="chip" style="'+(on?'border-color:var(--avoid);color:var(--avoid);font-weight:650':'')+
+         '" onclick="PSEL.genes[\''+g[0]+'\']=!PSEL.genes[\''+g[0]+'\'];drawPanel()">'+esc(g[1])+'</div>';
+     }).join('')+'</div>'+
+     '<div style="font-size:11.5px;color:var(--faint);margin-top:10px">Leave a gene unticked only if the report says Not Detected. That negative is the most reliable thing on the page.</div></div>';
+
+  /* what is running now */
+  var running=Object.keys(PSEL.current).filter(function(k){return PSEL.current[k]});
+  h+='<div class="card"><label>Antibiotics running now</label>'+
+     '<div class="searchbar" style="margin-bottom:8px"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">'+
+     '<circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>'+
+     '<input id="pq" type="search" placeholder="Add a drug\u2026" oninput="drawPanelDrugList()"></div>'+
+     '<div id="pdruglist"></div>'+
+     (running.length?'<div class="chips" style="flex-wrap:wrap;overflow:visible;padding:10px 0 0">'+running.map(function(n){
+       return '<div class="chip" style="border-color:var(--info);color:var(--info)" onclick="PSEL.current[\''+n.replace(/'/g,"\\'")+'\']=false;drawPanel()">'+esc(n)+' \u00d7</div>';
+     }).join('')+'</div>':'<div style="font-size:12px;color:var(--faint);margin-top:8px">Nothing added yet.</div>')+
+     '</div>';
+
+  h+='<div id="panelout"></div>';
+  $('panelbody').innerHTML=h;
+  drawPanelDrugList();
+  panelAnalyse();
+}
+
+function drawPanelDrugList(){
+  var q=($('pq')&&$('pq').value||'').toLowerCase().trim();
+  if(!q){ $('pdruglist').innerHTML=''; return }
+  var out=[];
+  for(var i=0;i<DRUGS.length && out.length<6;i++){
+    var d=DRUGS[i];
+    if((d.n+' '+(d.al||'')).toLowerCase().indexOf(q)<0) continue;
+    if(PSEL.current[d.n]) continue;
+    out.push('<div class="row" style="margin-bottom:5px" onclick="PSEL.current[\''+d.n.replace(/'/g,"\\'")+'\']=true;drawPanel()">'+
+      '<div class="bar" style="background:'+classCol(d.c)+'"></div>'+
+      '<div style="min-width:0"><div class="rname" style="font-size:14.5px">'+esc(d.n)+'</div></div>'+
+      '<div class="rgo">+</div></div>');
+  }
+  $('pdruglist').innerHTML=out.join('');
+}
+
+function panelAnalyse(){
+  var orgs=Object.keys(PSEL.orgs).filter(function(k){return PSEL.orgs[k]});
+  var genes=Object.keys(PSEL.genes).filter(function(k){return PSEL.genes[k]});
+  var running=Object.keys(PSEL.current).filter(function(k){return PSEL.current[k]});
+  var box=$('panelout');
+  if(!orgs.length && !genes.length){
+    box.innerHTML='<div class="empty">Tick what the report shows and the suggestions build themselves.</div>';
+    return;
+  }
+  var h='';
+
+  /* ---- attribution warning, first, because it governs everything else ---- */
+  var gnOrgs=orgs.filter(function(o){ return ['entero','ampc','pseudo','acineto'].indexOf(pOrgClass(o))>-1 });
+  var carb=genes.filter(function(g){ var G=pGene(g); return G && (G[2]==='carbapenemase'||G[2]==='mbl') });
+  if(gnOrgs.length>1 && carb.length){
+    h+='<div class="flag avoid"><div class="ic">!</div><div><b>Attribution is uncertain.</b> '+
+       gnOrgs.length+' Gram-negative organisms and '+carb.length+' carbapenemase gene'+(carb.length>1?'s':'')+
+       ' on one report. The panel cannot say which organism carries which gene, and the right regimen differs '+
+       'depending on the answer. Everything below is worked through for each organism separately — read them as '+
+       'alternatives, not as a combined prescription. The culture is what settles it.</div></div>';
+  }
+  if(genes.indexOf('ndm')>-1 && genes.indexOf('oxa48')>-1){
+    h+='<div class="flag avoid"><div class="ic">!</div><div><b>NDM and OXA-48 together.</b> If both sit in the same '+
+       'organism, ceftazidime-avibactam alone will not do — the NDM defeats it. The regimen has to cover the '+
+       'metallo-enzyme.</div></div>';
+  }
+  if(genes.indexOf('meca')>-1 && orgs.indexOf('saureus')<0){
+    h+='<div class="flag adj"><div class="ic">?</div><div><b>mecA detected without S. aureus.</b> This usually comes from '+
+       'a coagulase-negative staphylococcus the panel does not report. It is not by itself a reason to start MRSA cover.</div></div>';
+  }
+
+  /* ---- current drugs, judged ---- */
+  if(running.length){
+    var stop=[], shaky=[], keep=[];
+    running.forEach(function(n){
+      var worst=null, why=[];
+      genes.forEach(function(g){
+        var hit=HITS[g] && HITS[g][n];
+        if(!hit) return;
+        if(g==='meca' && orgs.indexOf('saureus')<0) return;
+        why.push(pGene(g)[1]);
+        if(hit==='no') worst='no';
+        else if(worst!=='no') worst='unreliable';
+      });
+      if(worst==='no') stop.push([n, why]);
+      else if(worst==='unreliable') shaky.push([n, why]);
+      else keep.push(n);
+    });
+
+    if(stop.length){
+      h+='<h3 style="color:var(--avoid)">Predicted inactive \u2014 consider stopping</h3><div class="card" style="border-color:rgba(248,113,113,.35)">'+
+        stop.map(function(x,ix){
+          return '<div style="padding:10px 0;'+(ix?'border-top:1px solid var(--line)':'')+'">'+
+            '<div style="font-weight:650;font-size:15px">'+esc(x[0])+'</div>'+
+            '<div style="font-size:13px;color:var(--dim);margin-top:3px">Knocked out by '+x[1].join(' and ')+'.</div></div>';
+        }).join('')+'</div>';
+    }
+    if(shaky.length){
+      h+='<h3 style="color:var(--adj)">Unreliable \u2014 may test susceptible and still fail</h3><div class="card" style="border-color:rgba(251,191,36,.35)">'+
+        shaky.map(function(x,ix){
+          return '<div style="padding:10px 0;'+(ix?'border-top:1px solid var(--line)':'')+'">'+
+            '<div style="font-weight:650;font-size:15px">'+esc(x[0])+'</div>'+
+            '<div style="font-size:13px;color:var(--dim);margin-top:3px">'+x[1].join(' and ')+' present. Keep it only if the sensitivity supports it and the source is not blood.</div></div>';
+        }).join('')+'</div>';
+    }
+    if(keep.length){
+      h+='<h3 style="color:var(--ok)">Not affected by the genes on this report</h3><div class="card"><div style="font-size:14px;color:var(--dim);line-height:1.6">'+
+        keep.map(esc).join(' \u00b7 ')+'</div></div>';
+    }
+
+    /* de-escalation opportunity */
+    if(genes.indexOf('meca')<0){
+      var mrsaDrugs=running.filter(function(n){ return ['Vancomycin','Linezolid','Teicoplanin','Daptomycin'].indexOf(n)>-1 });
+      if(mrsaDrugs.length){
+        h+='<div class="flag info"><div class="ic">\u2193</div><div><b>mecA not detected.</b> That negative is the reliable half of this '+
+           'test. If '+mrsaDrugs.join(' and ')+' is running purely as empiric MRSA cover, this is the result that lets you stop it.</div></div>';
+      }
+    }
+  }
+
+  /* ---- per organism, what to reach for ---- */
+  var mech = genes.indexOf('ndm')>-1||genes.indexOf('vim')>-1||genes.indexOf('imp')>-1 ? 'mbl'
+           : genes.indexOf('kpc')>-1 ? 'kpc'
+           : genes.indexOf('oxa48')>-1 ? 'oxa48'
+           : genes.indexOf('ctxm')>-1 ? 'esbl' : null;
+
+  orgs.forEach(function(o){
+    var cls=pOrgClass(o), R=null, label='';
+    if(cls==='saureus'){
+      R = genes.indexOf('meca')>-1 ? REGIMENS.saureus.mrsa : REGIMENS.saureus.mssa;
+      label = genes.indexOf('meca')>-1 ? 'MRSA' : 'MSSA';
+    } else if(cls==='acineto'){
+      R = REGIMENS.acineto.any; label = carb.length ? 'carbapenem-resistant' : 'treat by sensitivity';
+    } else if(cls==='pseudo' && mech){
+      R = REGIMENS.pseudo[mech]; label = mech.toUpperCase();
+    } else if((cls==='entero'||cls==='ampc') && mech){
+      R = REGIMENS.entero[mech]; label = mech==='esbl'?'ESBL':mech.toUpperCase();
+    }
+    if(!R) return;
+
+    h+='<h3>'+esc(pOrgName(o))+' \u2014 '+label+'</h3>';
+    var first=R.first.filter(inStock), off=R.first.filter(function(n){return !inStock(n)});
+    h+='<div class="card">';
+    h+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:8px">Reach for</div>'+drugChips(first);
+    if(R.add && R.add.filter(inStock).length){
+      h+='<div style="font-size:12.5px;color:var(--dim);margin:10px 0 8px">Partner agent \u2014 combination is expected here</div>'+
+         drugChips(R.add.filter(inStock));
+    }
+    if(off.length){
+      h+='<div style="font-size:12.5px;color:var(--faint);margin-top:10px">Preferred but not stocked in your unit: '+off.join(', ')+'</div>';
+    }
+    h+='<div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-top:11px">'+esc(R.note)+'</div>';
+    h+='</div>';
+    if(R.avoid && R.avoid.length){
+      h+='<div class="flag avoid"><div class="ic">\u2717</div><div><b>Advised against here:</b> '+R.avoid.join(', ')+'</div></div>';
+    }
+  });
+
+  /* ---- caveats, always ---- */
+  h+='<h3>Before you act on any of this</h3><div class="card" style="border-color:rgba(251,191,36,.3)">'+
+     PANEL_CAVEATS.map(function(c,ix){
+       return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:13.5px">'+
+         '<span style="color:var(--adj);flex:none">!</span><span>'+esc(c)+'</span></div>';
+     }).join('')+'</div>';
+
+  h+='<button class="btn ghost" onclick="PSEL={orgs:{},genes:{},current:{}};drawPanel()">Clear and start again</button>';
+  h+='<div class="disc">Built on IDSA guidance for antimicrobial-resistant Gram-negative infections, filtered to what your unit stocks. '+
+     'Suggestions only \u2014 the prescription is yours.</div>';
+  box.innerHTML=h;
+}
+
+function drawStock(){
+  var h='<button class="back" onclick="nav(\'panel\')">\u2039 Panel</button><h2>What your unit stocks</h2>'+
+    '<p class="lede">Suggestions are filtered through this. Untick anything you cannot actually get hold of.</p><div class="card">';
+  Object.keys(STOCK).forEach(function(n,ix){
+    h+='<label style="display:flex;gap:10px;align-items:center;padding:11px 0;'+(ix?'border-top:1px solid var(--line)':'')+';cursor:pointer;margin:0">'+
+       '<input type="checkbox" '+(STOCK[n]?'checked':'')+' style="width:18px;height:18px;flex:none;accent-color:var(--ok)" '+
+       'onchange="STOCK[\''+n.replace(/'/g,"\\'")+'\']=this.checked;save(\'stock\',JSON.stringify(STOCK))">'+
+       '<span style="font-size:14.5px;color:var(--ink)">'+esc(n)+'</span></label>';
+  });
+  h+='</div><button class="btn" onclick="nav(\'panel\')">Done</button>';
+  $('v-stock').innerHTML=h;
+  window.scrollTo(0,0);
+}
+
+
+/* ============================================================
+   RESPIRATORY PANEL — organism-directed suggestions
+   ============================================================ */
+var RSEL = {panel:'pn', hits:{}, copies:{}};
+
+function rPanelDef(k){ for(var i=0;i<RPANELS.length;i++) if(RPANELS[i][0]===k) return RPANELS[i]; return RPANELS[0] }
+
+function drawResp(){
+  var P=rPanelDef(RSEL.panel), h='';
+
+  h+='<div class="chips">'+RPANELS.map(function(p){
+    var on=RSEL.panel===p[0];
+    return '<div class="chip" style="'+(on?'background:var(--info);border-color:var(--info);color:#06131C;font-weight:650':'')+
+      '" onclick="RSEL.panel=\''+p[0]+'\';RSEL.hits={};RSEL.copies={};drawResp()">'+esc(p[1])+'</div>';
+  }).join('')+'</div>';
+  h+='<div style="font-size:12px;color:var(--faint);margin-bottom:14px">Sample: '+esc(P[2])+'</div>';
+
+  var groups=[['virus','Viruses'],['atypical','Atypical bacteria'],['bacteria','Bacteria']];
+  groups.forEach(function(g){
+    var keys=P[3].filter(function(k){ return RORG[k] && RORG[k].g===g[0] });
+    if(!keys.length) return;
+    h+='<div class="card"><label>'+g[1]+' \u2014 tick what is DETECTED</label>'+
+       '<div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:0">'+
+       keys.map(function(k){
+         var on=!!RSEL.hits[k];
+         var col=g[0]==='virus'?'var(--info)':g[0]==='atypical'?'var(--adj)':'var(--ok)';
+         return '<div class="chip" style="'+(on?'border-color:'+col+';color:'+col+';font-weight:650':'')+
+           '" onclick="RSEL.hits[\''+k+'\']=!RSEL.hits[\''+k+'\'];drawResp()">'+esc(RORG[k].n)+'</div>';
+       }).join('')+'</div></div>';
+  });
+
+  /* copy numbers, PN only, only for what is ticked */
+  if(RSEL.panel==='pn'){
+    var ticked=P[3].filter(function(k){ return RSEL.hits[k] && RORG[k].g==='bacteria' });
+    if(ticked.length){
+      h+='<div class="card"><label>Copies/mL, if the report gives them</label>';
+      ticked.forEach(function(k,ix){
+        h+='<div style="padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+'">'+
+           '<div style="font-size:13.5px;margin-bottom:6px">'+esc(RORG[k].n)+'</div>'+
+           '<div class="chips" style="flex-wrap:wrap;overflow:visible;padding-bottom:0">'+
+           ['10^4','10^5','10^6','\u226510^7'].map(function(c){
+             var on=RSEL.copies[k]===c;
+             return '<div class="chip" style="'+(on?'border-color:var(--adj);color:var(--adj);font-weight:650':'')+
+               '" onclick="RSEL.copies[\''+k+'\']=(RSEL.copies[\''+k+'\']===\''+c+'\'?null:\''+c+'\');drawResp()">'+c+'</div>';
+           }).join('')+'</div></div>';
+      });
+      h+='</div>';
+    }
+  }
+
+  h+='<div id="respout"></div>';
+  $('respbody').innerHTML=h;
+  respAnalyse();
+}
+
+function respAnalyse(){
+  var P=rPanelDef(RSEL.panel);
+  var hits=P[3].filter(function(k){ return RSEL.hits[k] });
+  var box=$('respout');
+  if(!hits.length){
+    box.innerHTML='<div class="flag info"><div class="ic">i</div><div>'+
+      esc(RSEL.panel==='urt'?RESP_RULES.urtCaveat:RESP_RULES.pnCaveat)+'</div></div>'+
+      '<div class="empty">Nothing ticked yet.<br>If the whole report is negative, that is itself a finding \u2014 see the note above.</div>';
+    return;
+  }
+  var h='';
+
+  /* ---- headline patterns first ---- */
+  var viruses=hits.filter(function(k){ return RORG[k].g==='virus' });
+  var bacts=hits.filter(function(k){ return RORG[k].g==='bacteria' });
+  var atyp=hits.filter(function(k){ return RORG[k].g==='atypical' });
+
+  if((hits.indexOf('fluA')>-1||hits.indexOf('fluB')>-1) && hits.indexOf('saureus')>-1){
+    h+='<div class="flag avoid"><div class="ic">!</div><div><b>Influenza with S. aureus.</b> '+esc(RESP_RULES.postFlu)+'</div></div>';
+  }
+  if(atyp.length){
+    h+='<div class="flag adj"><div class="ic">!</div><div><b>Atypical detected.</b> '+esc(RESP_RULES.atypicalGap)+'</div></div>';
+  }
+  if(viruses.length && !bacts.length && !atyp.length){
+    h+='<div class="flag info"><div class="ic">\u2193</div><div><b>Virus only.</b> '+esc(RESP_RULES.virusOnly)+'</div></div>';
+  }
+
+  /* ---- three buckets ---- */
+  var buckets={treat:[], depends:[], 'usually-no':[]};
+  hits.forEach(function(k){ buckets[RORG[k].act].push(k) });
+
+  function block(list, title, col, border){
+    if(!list.length) return '';
+    var out='<h3 style="color:'+col+'">'+title+'</h3>';
+    list.forEach(function(k){
+      var o=RORG[k];
+      var cop = RSEL.copies[k] ? '  \u00b7  '+RSEL.copies[k]+' copies/mL' : '';
+      out+='<div class="card"'+(border?' style="border-color:'+border+'"':'')+'>'+
+        '<div style="font-size:15.5px;font-weight:650;margin-bottom:3px">'+esc(o.n)+
+        '<span style="font-size:12px;color:var(--faint);font-weight:400" class="mono">'+esc(cop)+'</span></div>'+
+        '<div style="font-size:13px;color:var(--faint);margin-bottom:10px">'+esc(o.why)+'</div>';
+      if(o.drugs && o.drugs.length){
+        out+='<div style="font-size:12.5px;color:var(--dim);margin-bottom:7px">Consider</div>'+drugChips(o.drugs);
+      }
+      out+='<div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-top:6px">'+esc(o.note)+'</div></div>';
+    });
+    return out;
+  }
+
+  h+=block(buckets.treat,'Treat this','var(--ok)','rgba(52,211,153,.35)');
+  h+=block(buckets.depends,'Depends \u2014 pathogen or coloniser?','var(--adj)','rgba(251,191,36,.35)');
+  h+=block(buckets['usually-no'],'Usually needs no antimicrobial','var(--faint)','');
+
+  /* ---- copy number guidance ---- */
+  if(RSEL.panel==='pn' && bacts.length){
+    var lowOnly = bacts.every(function(k){ return !RSEL.copies[k] || RSEL.copies[k]==='10^4' });
+    h+='<div class="flag '+(lowOnly?'adj':'info')+'"><div class="ic">#</div><div>'+esc(RESP_RULES.copyNote)+
+       (lowOnly?' Everything bacterial here is at the low end \u2014 in a patient who is not deteriorating, that argues for colonisation.':'')+'</div></div>';
+  }
+
+  /* ---- the sample caveat, always ---- */
+  h+='<div class="flag adj"><div class="ic">!</div><div>'+
+     esc(RSEL.panel==='urt'?RESP_RULES.urtCaveat:RESP_RULES.pnCaveat)+'</div></div>';
+
+  if(RSEL.panel==='pn'){
+    h+='<div class="flag info"><div class="ic">\u2192</div><div>This report also carries resistance genes. '+
+       '<span style="color:var(--info);cursor:pointer;text-decoration:underline" onclick="nav(\'panel\')">Open the resistance side</span> '+
+       'to work out which of these drugs will still work.</div></div>';
+  }
+
+  h+='<button class="btn ghost" onclick="RSEL.hits={};RSEL.copies={};drawResp()">Clear</button>';
+  h+='<div class="disc">Suggestions only, and deliberately conservative about what needs treating. '+
+     'A panel result is not a diagnosis of pneumonia.</div>';
+  box.innerHTML=h;
+}
+
 /* ---------- standalone dose/rate converter ---------- */
 var CALC={amt:4, vol:50, unit:'mcg/kg/min', dose:0.1};
 function calcPseudo(){
@@ -1916,11 +2330,13 @@ function drawMine(){
 
   h+='<h3>Backup</h3><div class="card">'+
      '<div style="font-size:13.5px;color:var(--dim);line-height:1.6;margin-bottom:11px">'+
-     'Everything you have typed — notes, entries and dilutions — in one file. '+
+     'Everything you have typed — notes, entries, dilutions and your stock list — in one file. '+
+     'The same file opens on any device running CritiDose, so a phone and a desktop can be kept in step. '+
      'Clearing the browser data on this phone wipes all of it, so take one occasionally.</div>'+
      '<button class="btn ghost" onclick="backup()">Save a backup file</button>'+
-     '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer;margin-top:6px">Restore from a backup'+
-     '<input type="file" accept=".json,application/json" style="display:none" onchange="onRestoreFile(this)"></label></div>';
+     '<label class="btn ghost" style="display:block;text-align:center;cursor:pointer;margin-top:6px">Open a backup file'+
+     '<input type="file" accept=".json,application/json" style="display:none" onchange="onRestoreFile(this)"></label>'+
+     '<div id="restorebox" style="margin-top:10px"></div></div>';
 
   $('minebody').innerHTML=h;
 }
@@ -1953,6 +2369,7 @@ function drawSoon(k){
   ['abx','inf','frm','proto'].forEach(function(k){ if(!MY[k]) MY[k]=[] });
   rebuild();
   var iw=read('iwt'); if(iw) S.iwt=iw;
+  try{ var st=read('stock'); if(st){ var o=JSON.parse(st); Object.keys(o).forEach(function(k){ STOCK[k]=o[k] }) } }catch(e){}
   loadPatient();
   ['age','wt','ht','cr'].forEach(function(id){ $(id).addEventListener('input',refresh) });
   $('crunit').addEventListener('change',refresh);
