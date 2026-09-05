@@ -3,7 +3,7 @@
    the moment you push an update to GitHub, and the ward's dead Wi-Fi still
    gets you a working app. */
 
-var CACHE = 'critidose-v4';
+var CACHE = 'critidose-v5';
 var SHELL = [
   './',
   'index.html',
@@ -12,6 +12,7 @@ var SHELL = [
   'data/formulary.js',
   'data/disease.js',
   'data/protocols.js',
+  'data/theory.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',

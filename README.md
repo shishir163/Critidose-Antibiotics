@@ -1,4 +1,4 @@
-# CritiDose — ধাপ ৩
+# CritiDose — সম্পূর্ণ (ধাপ ১–৪)
 
 Right drug, right dose, right patient — even at 3 AM.
 
@@ -12,7 +12,10 @@ CrCl · IBW · AdjBW, Child-Pugh, alias সহ সার্চ, ৯টা টা
 নিজের ওষুধ ও protocol যোগ করার ফর্ম, CSV import, backup/restore,
 আর ড্যাশবোর্ডে সবকিছুর সার্চ।
 
-Theory টাইলটা ধাপ ৪-এ আসছে।
+**ধাপ ৪** — ১৪টা Theory পাতা (ব্যাকটেরিওলজি, spectrum, resistance, PK/PD,
+pregnancy, duration), steroid equivalence converter, NEWS2 আর SOFA।
+
+ন'টা টাইলই এখন চালু।
 
 ---
 
@@ -25,6 +28,7 @@ data/infusions.js          infusion — dilution ডিফল্ট আর র�
 data/formulary.js          ১৫০টা ওষুধ, system ট্যাগসহ
 data/disease.js            empiric therapy by site
 data/protocols.js          protocol
+data/theory.js             রেফারেন্স পাতা
 manifest.webmanifest       হোম স্ক্রিনে বসার তথ্য
 sw.js                      নেট ছাড়া চালানোর জন্য
 icons/                     আইকন

@@ -147,6 +147,13 @@ details>summary::-webkit-details-marker{display:none}
 details>summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
 details[open]>summary::before{content:'▾ '}
 .tagline{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tblwrap{overflow-x:auto;margin-bottom:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.tblwrap::-webkit-scrollbar{height:0}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:340px}
+th{text-align:left;font-weight:600;color:var(--dim);font-size:11.5px;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.45}
+tr:last-child td{border-bottom:0}
+td.first{font-weight:600;color:var(--ink)}
 .tg{font-size:11.5px;padding:4px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
 </style>
 </head>
@@ -321,6 +328,21 @@ details[open]>summary::before{content:'▾ '}
 <!-- ============ NEW ENTRY ============ -->
 <section id="v-add" class="hide"></section>
 
+<!-- ============ THEORY ============ -->
+<section id="v-theory" class="hide">
+  <button class="back" onclick="nav('home')">‹ Dashboard</button>
+  <h2>Theory</h2>
+  <p class="lede" id="theorysub"></p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qt" type="search" placeholder="ESBL, spectrum, pregnancy, duration…" oninput="drawTheory()">
+  </div>
+  <div class="chips" id="chips-tg2"></div>
+  <div id="theoryrows"></div>
+</section>
+<section id="v-theorydet" class="hide"></section>
+
 <!-- ============ CALCULATORS ============ -->
 <section id="v-calc" class="hide">
   <button class="back" onclick="nav('home')">‹ Dashboard</button>
@@ -334,7 +356,9 @@ details[open]>summary::before{content:'▾ '}
   <button class="back" onclick="nav('home')">‹ Dashboard</button>
   <h2>Scores</h2>
   <p class="lede">Child-Pugh feeds straight into the liver line on every drug page.</p>
-  <div class="card">
+  <div class="chips" id="chips-sc"></div>
+  <div id="sc-other" class="hide"></div>
+  <div id="sc-cp"><div class="card">
     <div style="font-size:15.5px;font-weight:650;margin-bottom:12px">Child-Pugh</div>
     <div style="margin-bottom:11px"><label>Bilirubin (mg/dL)</label>
       <div class="segs"><div class="seg on" data-cp1="1" onclick="cpPick(this)">under 2</div>
@@ -356,12 +380,8 @@ details[open]>summary::before{content:'▾ '}
       <div class="segs"><div class="seg on" data-cp5="1" onclick="cpPick(this)">None</div>
       <div class="seg" data-cp5="2" onclick="cpPick(this)">Grade 1–2</div>
       <div class="seg" data-cp5="3" onclick="cpPick(this)">Grade 3–4</div></div></div>
-  </div>
+  </div></div>
   <div id="cpout"></div>
-  <h3>Coming later</h3>
-  <div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">
-    NEWS2 and SOFA arrive in step 4, once the dosing side has been through a few weeks of rounds.
-  </div>
 </section>
 
 <!-- ============ MY NOTES ============ -->
@@ -382,14 +402,16 @@ details[open]>summary::before{content:'▾ '}
 <script src="data/formulary.js"></script>
 <script src="data/disease.js"></script>
 <script src="data/protocols.js"></script>
+<script src="data/theory.js"></script>
 <script>
 /* ============================================================
    CritiDose — app logic
    ============================================================ */
-var APP_VERSION = '3.1 · step 3';
+var APP_VERSION = '4.0 · step 4';
 
 var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null,
-         ig:'all', sys:'', inf:null, iwt:'actual', dg:'all', pg:'all', addType:'frm'};
+         ig:'all', sys:'', inf:null, iwt:'actual', dg:'all', pg:'all', addType:'frm',
+         tg2:'all', score:'cp'};
 var DIL = {};
 var NOTES = {};
 var CP = {1:1,2:1,3:1,4:1,5:1};
@@ -558,7 +580,7 @@ function clearPatient(){
 function openPatient(){ nav('patient') }
 
 /* ---------- routing ---------- */
-var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','dis','disdet','proto','protodet','add','calc','scores','mine','soon'];
+var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','dis','disdet','proto','protodet','theory','theorydet','add','calc','scores','mine','soon'];
 function nav(v,arg){
   var h = (arg!==undefined && arg!==null) ? '#'+v+'/'+arg : '#'+v;
   if(location.hash!==h) location.hash=h; else route();
@@ -583,10 +605,12 @@ function route(){
   if(v==='proto'){ drawPGroups(); drawProto() }
   if(v==='protodet'){ showProto(parseInt(arg,10)) }
   if(v==='add'){ drawAdd(arg) }
+  if(v==='theory'){ drawTGroups(); drawTheory() }
+  if(v==='theorydet'){ showTheory(parseInt(arg,10)) }
   if(v==='calc'){ drawCalc() }
   if(v==='mine'){ drawMine() }
   if(v==='soon'){ drawSoon(arg) }
-  if(v==='scores'){ cpScore() }
+  if(v==='scores'){ drawScoreChips(); drawScoreView() }
   window.scrollTo(0,0);
 }
 window.addEventListener('hashchange',route);
@@ -603,7 +627,7 @@ var TILES=[
    '<path d="M8 4h8v3H8zM6 7h12v13H6z"/><path d="M9.5 12h5M9.5 16h5"/>'],
   ['Disease-wise','#34D399','What to start, by site','dis','ready',
    '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'],
-  ['Theory','#A78BFA','Spectrum, classes, bacteriology','theory','step 4',
+  ['Theory','#A78BFA','Spectrum, classes, bacteriology','theory','ready',
    '<path d="M12 4 4 8l8 4 8-4-8-4Z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/>'],
   ['Calculators','#22D3EE','CrCl, ideal and adjusted weight','calc','ready',
    '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h2M13 12h2M8.5 16h2M13 16h2"/>'],
@@ -874,10 +898,9 @@ function drawCalc(){
      '<div><label for="c_out">mL/hr</label><input id="c_out" type="number" inputmode="decimal" oninput="calcDose()"></div></div>'+
      '<div class="work" style="margin-top:12px" id="c_work"></div></div>';
 
-  h+='<h3>Coming later</h3><div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">'+
-     'The steroid equivalence converter arrives in step 4.</div>';
+  h+=steroidCard();
   $('calcbody').innerHTML=h;
-  calcRate();
+  calcRate(); drawSteroid();
 }
 
 /* ---------- Child-Pugh ---------- */
@@ -1576,6 +1599,8 @@ function globalSearch(){
     push('Protocol', pgCol(PROTOCOLS[i].k), PROTOCOLS[i].n, pgName(PROTOCOLS[i].k), "nav('protodet',"+i+")");
   for(i=0;i<DISEASES.length;i++) if((DISEASES[i].n+' '+(DISEASES[i].al||'')+' '+DISEASES[i].sub).toLowerCase().indexOf(q)>-1)
     push('Empiric', dgCol(DISEASES[i].k), DISEASES[i].n, DISEASES[i].sub, "nav('disdet',"+i+")");
+  for(i=0;i<THEORY.length;i++) if((THEORY[i].n+' '+(THEORY[i].al||'')+' '+THEORY[i].sub).toLowerCase().indexOf(q)>-1)
+    push('Theory', tgCol(THEORY[i].k), THEORY[i].n, THEORY[i].sub, "nav('theorydet',"+i+")");
 
   box.innerHTML = out.length ? out.slice(0,40).map(function(r){
     return '<div class="row" onclick="'+r[4]+'" role="button" tabindex="0">'+
@@ -1584,6 +1609,201 @@ function globalSearch(){
       '<div class="rsub" style="white-space:normal">'+r[0]+' \u00b7 '+esc(r[3])+'</div></div>'+
       '<div class="rgo">\u203a</div></div>';
   }).join('') : '<div class="empty">Nothing matches that.<br>Try a brand name, or the generic.</div>';
+}
+
+
+/* ============================================================
+   THEORY — reference pages
+   ============================================================ */
+function tgCol(k){ for(var i=0;i<TGROUPS.length;i++) if(TGROUPS[i][0]===k) return TGROUPS[i][2]; return '#94A3B8' }
+function tgName(k){ for(var i=0;i<TGROUPS.length;i++) if(TGROUPS[i][0]===k) return TGROUPS[i][1]; return k }
+function drawTGroups(){
+  var g=[['all','All']].concat(TGROUPS.map(function(x){return [x[0],x[1]]}));
+  $('chips-tg2').innerHTML=g.map(function(c){
+    var on=(S.tg2||'all')===c[0], col=c[0]==='all'?'#60A5FA':tgCol(c[0]);
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.tg2=\''+c[0]+'\';drawTGroups();drawTheory()">'+c[1]+'</div>';
+  }).join('');
+}
+function drawTheory(){
+  var q=($('qt').value||'').toLowerCase().trim(), list=[];
+  for(var i=0;i<THEORY.length;i++){
+    var t=THEORY[i];
+    if((S.tg2||'all')!=='all' && t.k!==S.tg2) continue;
+    if(q && (t.n+' '+(t.al||'')+' '+t.sub).toLowerCase().indexOf(q)<0) continue;
+    list.push([t,i]);
+  }
+  $('theorysub').textContent='Nothing here calculates. These are the pages you open to check something.';
+  $('theoryrows').innerHTML=list.length ? list.map(function(p){
+    return '<div class="row" onclick="nav(\'theorydet\','+p[1]+')" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+tgCol(p[0].k)+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(p[0].n)+'</div>'+
+      '<div class="rsub" style="white-space:normal">'+esc(p[0].sub)+'</div></div>'+
+      '<div class="rgo">\u203a</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.</div>';
+}
+function showTheory(i){
+  if(isNaN(i)||!THEORY[i]){ nav('theory'); return }
+  var t=THEORY[i], col=tgCol(t.k), h='';
+  h+='<button class="back" onclick="nav(\'theory\')">\u2039 All topics</button>';
+  h+='<div style="display:flex;align-items:center;gap:11px;margin:6px 0 14px">'+
+     '<div class="bar" style="background:'+col+';height:30px"></div>'+
+     '<div><div style="font-size:21px;font-weight:650;letter-spacing:-.015em">'+esc(t.n)+'</div>'+
+     '<div class="rsub">'+tgName(t.k)+'</div></div></div>';
+  t.b.forEach(function(bl){
+    if(bl.h)  h+='<h3 style="color:'+col+'">'+esc(bl.h)+'</h3>';
+    if(bl.p)  h+='<p style="font-size:14.5px;line-height:1.6;margin:0 0 12px;color:var(--dim)">'+esc(bl.p)+'</p>';
+    if(bl.li) h+='<div class="card">'+bl.li.map(function(x,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:'+col+';flex:none">\u25b8</span><span>'+esc(x)+'</span></div>' }).join('')+'</div>';
+    if(bl.tbl){
+      h+='<div class="tblwrap"><table><thead><tr>'+bl.tbl.head.map(function(c){return '<th>'+esc(c)+'</th>'}).join('')+
+         '</tr></thead><tbody>'+bl.tbl.rows.map(function(r){
+           return '<tr>'+r.map(function(c,ci){ return '<td'+(ci===0?' class="first"':'')+'>'+esc(c)+'</td>' }).join('')+'</tr>';
+         }).join('')+'</tbody></table></div>';
+    }
+    if(bl.note)  h+='<div class="flag adj"><div class="ic">!</div><div>'+esc(bl.note)+'</div></div>';
+    if(bl.drugs) h+=drugChips(bl.drugs);
+  });
+  h+='<h3>Your note</h3><div class="card">'+noteBox('the:'+t.n)+'</div>';
+  $('v-theorydet').innerHTML=h;
+  window.scrollTo(0,0);
+}
+
+/* ============================================================
+   STEROID CONVERTER
+   ============================================================ */
+var STEROIDS=[
+  ['Hydrocortisone', 20,   '1',  '1'],
+  ['Cortisone',      25,   '0.8','0.8'],
+  ['Prednisolone',   5,    '4',  '0.6'],
+  ['Methylprednisolone', 4,'5',  '0.5'],
+  ['Triamcinolone',  4,    '5',  '0'],
+  ['Deflazacort',    6,    '4',  '0.5'],
+  ['Dexamethasone',  0.75, '25', '0'],
+  ['Betamethasone',  0.6,  '30', '0']
+];
+var STER={from:'Methylprednisolone', dose:125};
+function steroidCard(){
+  var h='<div class="card"><div style="font-size:15.5px;font-weight:650;margin-bottom:4px">Steroid equivalence</div>'+
+    '<div class="rsub" style="margin-bottom:12px">Anti-inflammatory potency only. It says nothing about the mineralocorticoid effect, which is often the reason you picked the drug.</div>'+
+    '<div class="grid2" style="margin-bottom:10px">'+
+    '<div><label for="s_from">Steroid</label><select id="s_from" onchange="STER.from=this.value;drawCalc()">'+
+      STEROIDS.map(function(x){ return '<option'+(STER.from===x[0]?' selected':'')+'>'+x[0]+'</option>' }).join('')+
+    '</select></div>'+
+    '<div><label for="s_dose">Dose (mg)</label><input id="s_dose" type="number" inputmode="decimal" value="'+STER.dose+'" oninput="STER.dose=parseFloat(this.value);drawSteroid()"></div>'+
+    '</div><div id="s_out"></div></div>';
+  return h;
+}
+function drawSteroid(){
+  var el=$('s_out'); if(!el) return;
+  var src=null, i;
+  for(i=0;i<STEROIDS.length;i++) if(STEROIDS[i][0]===STER.from) src=STEROIDS[i];
+  var d=STER.dose;
+  if(!src||!isFinite(d)||d<=0){ el.innerHTML='<div style="font-size:13px;color:var(--faint)">Enter a dose.</div>'; return }
+  var out='<div class="ladder">';
+  STEROIDS.forEach(function(x){
+    var eq=d*(x[1]/src[1]);
+    var cur=x[0]===src[0];
+    out+='<div class="'+(cur?'cur':'')+'"><span>'+x[0]+'</span><span class="mono">'+
+      (eq<1?Math.round(eq*100)/100:Math.round(eq*10)/10)+' mg</span></div>';
+  });
+  out+='</div>';
+  out+='<div class="work" style="margin-top:12px"><div class="step">'+d+' mg '+src[0]+
+       ' \u00f7 '+src[1]+' \u00d7 the equivalent dose of each other steroid</div>'+
+       '<div class="step">Mineralocorticoid activity relative to hydrocortisone: '+src[0]+' '+src[3]+
+       '. Dexamethasone and betamethasone have none, so neither will do for adrenal crisis or septic shock.</div></div>';
+  el.innerHTML=out;
+}
+
+/* ============================================================
+   SCORES — NEWS2 and SOFA
+   ============================================================ */
+var SCORES={
+ news2:{
+  name:'NEWS2', sub:'Deterioration on the ward, and a common trigger for referral to us.',
+  items:[
+   ['Respiration rate (per min)', [['12–20',0],['9–11',1],['21–24',2],['\u22648',3],['\u226525',3]]],
+   ['SpO\u2082 (scale 1)',        [['\u226596',0],['94–95',1],['92–93',2],['\u226491',3]]],
+   ['Air or oxygen',             [['Air',0],['On oxygen',2]]],
+   ['Systolic BP (mmHg)',        [['111–219',0],['101–110',1],['91–100',2],['\u226490',3],['\u2265220',3]]],
+   ['Pulse (per min)',           [['51–90',0],['41–50',1],['91–110',1],['111–130',2],['\u226440',3],['\u2265131',3]]],
+   ['Consciousness',             [['Alert',0],['New confusion, voice, pain or unresponsive',3]]],
+   ['Temperature (\u00b0C)',     [['36.1–38.0',0],['35.1–36.0',1],['38.1–39.0',1],['\u226539.1',2],['\u226435.0',3]]]
+  ],
+  band:function(total, anyThree){
+    if(total>=7) return ['High risk','avoid','Emergency response. This is a critical care call, not a ward review.'];
+    if(total>=5) return ['Medium risk','adj','Urgent review by a clinician competent in acute illness, within the hour.'];
+    if(anyThree) return ['Low to medium risk','adj','A single parameter scoring 3 needs urgent review even when the total is low.'];
+    if(total>=1) return ['Low risk','ok','Continue routine monitoring, at least 4–6 hourly.'];
+    return ['Low risk','ok','Routine monitoring.'];
+  },
+  note:'This is scale 1. In chronic hypercapnic respiratory failure with a target saturation of 88–92%, scale 2 applies and scores oxygen saturations differently — do not use this card for those patients.'
+ },
+ sofa:{
+  name:'SOFA', sub:'Organ dysfunction, scored daily. The trend is what tells you something.',
+  items:[
+   ['Respiration — PaO\u2082/FiO\u2082 (mmHg)', [['\u2265400',0],['<400',1],['<300',2],['<200 with support',3],['<100 with support',4]]],
+   ['Coagulation — platelets (\u00d710\u2079/L)', [['\u2265150',0],['<150',1],['<100',2],['<50',3],['<20',4]]],
+   ['Liver — bilirubin (mg/dL)', [['<1.2',0],['1.2–1.9',1],['2.0–5.9',2],['6.0–11.9',3],['\u226512.0',4]]],
+   ['Cardiovascular', [['MAP \u226570',0],['MAP <70',1],['Dopamine \u22645 or any dobutamine',2],['Dopamine >5, or adrenaline/noradrenaline \u22640.1',3],['Dopamine >15, or adrenaline/noradrenaline >0.1',4]]],
+   ['CNS — Glasgow Coma Scale', [['15',0],['13–14',1],['10–12',2],['6–9',3],['<6',4]]],
+   ['Renal — creatinine (mg/dL) or urine', [['<1.2',0],['1.2–1.9',1],['2.0–3.4',2],['3.5–4.9 or <500 mL/day',3],['\u22655.0 or <200 mL/day',4]]]
+  ],
+  band:function(total){
+    if(total>=12) return ['Severe organ failure','avoid','Reported mortality above 50% at this range. The direction of travel over 48 hours matters more than the number today.'];
+    if(total>=8)  return ['Significant organ failure','adj','Reported mortality roughly 20–40%.'];
+    if(total>=2)  return ['Organ dysfunction present','adj','A rise of 2 or more from baseline is what defines sepsis in a patient with infection.'];
+    return ['Minimal organ dysfunction','ok','Reported mortality under 10%.'];
+  },
+  note:'Vasopressor doses are in mcg/kg/min and are scored on the dose running for at least an hour.'
+ }
+};
+var SCST={news2:[], sofa:[]};
+function drawScoreChips(){
+  var opts=[['cp','Child-Pugh'],['news2','NEWS2'],['sofa','SOFA']];
+  $('chips-sc').innerHTML=opts.map(function(o){
+    var on=(S.score||'cp')===o[0];
+    return '<div class="chip" style="'+(on?'background:var(--info);border-color:var(--info);color:#06131C;font-weight:650':'')+
+      '" onclick="S.score=\''+o[0]+'\';drawScoreChips();drawScoreView()">'+o[1]+'</div>';
+  }).join('');
+}
+function drawScoreView(){
+  var k=S.score||'cp';
+  $('sc-cp').classList.toggle('hide', k!=='cp');
+  $('cpout').classList.toggle('hide', k!=='cp');
+  $('sc-other').classList.toggle('hide', k==='cp');
+  if(k==='cp'){ cpScore(); return }
+  var sc=SCORES[k];
+  if(!SCST[k].length) SCST[k]=sc.items.map(function(){ return 0 });
+  var h='<div class="card"><div style="font-size:15.5px;font-weight:650;margin-bottom:3px">'+sc.name+'</div>'+
+        '<div class="rsub" style="margin-bottom:14px">'+esc(sc.sub)+'</div>';
+  sc.items.forEach(function(it, ix){
+    h+='<div style="margin-bottom:13px"><label>'+it[0]+'</label><div class="chips" style="padding-bottom:0;flex-wrap:wrap;overflow:visible">'+
+       it[1].map(function(o, oi){
+         var on=SCST[k][ix]===oi;
+         var col=o[1]===0?'var(--ok)':o[1]<=1?'var(--info)':o[1]<=2?'var(--adj)':'var(--avoid)';
+         return '<div class="chip" style="'+(on?'border-color:'+col+';color:'+col+';font-weight:650':'')+
+           '" onclick="SCST[\''+k+'\']['+ix+']='+oi+';drawScoreView()">'+o[0]+
+           '<span style="opacity:.5"> '+o[1]+'</span></div>';
+       }).join('')+'</div></div>';
+  });
+  h+='</div>';
+
+  var total=0, anyThree=false;
+  sc.items.forEach(function(it, ix){
+    var p=it[1][SCST[k][ix]][1];
+    total+=p; if(p>=3) anyThree=true;
+  });
+  var b = k==='news2' ? sc.band(total, anyThree) : sc.band(total);
+  var col = b[1]==='ok'?'var(--ok)' : b[1]==='avoid'?'var(--avoid)' : 'var(--adj)';
+  h+='<div class="hero" style="background:'+sigBg(b[1])+';border-color:'+col+'">'+
+     '<div class="lbl" style="color:'+col+'">'+sc.name+'</div>'+
+     '<div class="dose">'+total+(k==='sofa'?' of 24':' points')+' \u00b7 '+b[0]+'</div>'+
+     '<div class="note">'+esc(b[2])+'</div></div>';
+  h+='<div class="flag info"><div class="ic">i</div><div>'+esc(sc.note)+'</div></div>';
+  h+='<button class="btn ghost" onclick="SCST[\''+k+'\']=[];drawScoreView()">Reset</button>';
+  $('sc-other').innerHTML=h;
 }
 
 /* ---------- standalone dose/rate converter ---------- */
@@ -1706,7 +1926,7 @@ function drawMine(){
 
 /* ---------- not-yet views ---------- */
 var SOON={
-  theory:['Theory','Step 4','Bacteriology, mechanism-wise classes, spectrum grids and the steroid converter.']
+  theory:['Theory','Step 4','Coming soon.']
 };
 function drawSoon(k){
   var s=SOON[k]||['Not yet','','Coming in a later step.'];
