@@ -2,6 +2,9 @@
    CritiDose — formulary
    Version 1.0  ·  Step 2
    ------------------------------------------------------------
+   Sources: standard references and product information.
+   Not verified line by line.
+   ------------------------------------------------------------
    The everyday ICU drug list. Anything that needs a renal ladder
    lives in antibiotics.js, and anything that runs on a pump lives
    in infusions.js — this file is for the rest.

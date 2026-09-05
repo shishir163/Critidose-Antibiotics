@@ -2,6 +2,10 @@
    CritiDose — empiric therapy by site
    Version 1.0  ·  Step 3
    ------------------------------------------------------------
+   Sources: IDSA/ATS CAP 2019 and HAP/VAP 2016, IDSA intra-abdominal,
+   meningitis, candidiasis and febrile neutropenia guidelines, EASL,
+   Surviving Sepsis Campaign. Not verified line by line.
+   ------------------------------------------------------------
    These are starting points, not answers. Every card assumes you
    will narrow down when the culture comes back, and every card is
    beaten by your own unit's antibiogram.

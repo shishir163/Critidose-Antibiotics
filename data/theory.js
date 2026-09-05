@@ -2,6 +2,8 @@
    CritiDose — theory and reference
    Version 1.0  ·  Step 4
    ------------------------------------------------------------
+   Sources: see the "Where these numbers come from" page in the app.
+   ------------------------------------------------------------
    Nothing here calculates anything. These are the pages you open
    to check something, or to settle an argument on the round.
 
@@ -30,6 +32,35 @@ var TGROUPS = [
 ];
 
 var THEORY = [
+
+{n:'Where these numbers come from', al:'references sources evidence citation guideline', k:'practice',
+ sub:'Read this before you trust anything else in the app',
+ b:[
+  {p:'This app was written by an AI assistant working from its training, not by transcribing a guideline line by line. A number of the higher-risk items have since been checked against the sources below and corrected where they were wrong. The rest have not been verified one by one.'},
+  {note:'Treat every dose here as a prompt to think, not as an authority. When the number matters, open your own reference or your unit protocol. You are the prescriber, and this app carries no responsibility for what is written on the chart.'},
+  {h:'Checked against the source'},
+  {tbl:{head:['Item','Source'],
+   rows:[
+    ['Colistimethate maintenance ladder, loading dose, CRRT and dialysis dosing','Tsuji et al, International Consensus Guidelines for the Optimal Use of the Polymyxins, Pharmacotherapy 2019; dosing table from Nation et al, Clin Infect Dis 2017'],
+    ['Vancomycin AUC 400–600, loading 20–35 mg/kg, no trough-only dosing','Rybak et al, revised consensus guideline, ASHP / IDSA / PIDS / SIDP, Clin Infect Dis 2020'],
+    ['Ceftazidime-avibactam renal bands','AVYCAZ prescribing information and FDA clinical pharmacology review'],
+    ['Anidulafungin, micafungin, caspofungin and amphotericin B doses','IDSA candidiasis guideline 2016, and the product information'],
+    ['Posaconazole IV loading and the cyclodextrin caution','Noxafil product information'],
+    ['Paracetamol — the SNAP 12-hour regimen alongside the 21-hour','Bateman et al, Lancet 2014; Pettie et al, eClinicalMedicine 2019; current UK practice'],
+    ['NEWS2 parameters and thresholds','Royal College of Physicians, NEWS2, 2017'],
+    ['SOFA','Vincent et al, Intensive Care Med 1996'],
+    ['Child-Pugh','Pugh et al, Br J Surg 1973']]}},
+  {h:'The general sources behind the rest'},
+  {li:['Antibiotic doses and renal adjustment — Sanford Guide, The Renal Drug Handbook, and product information.',
+       'Empiric therapy cards — IDSA/ATS community-acquired pneumonia 2019 and hospital-acquired pneumonia 2016; IDSA intra-abdominal, meningitis, candidiasis and febrile neutropenia guidelines; EASL for decompensated cirrhosis; Surviving Sepsis Campaign.',
+       'The ESBL point about piperacillin-tazobactam — the MERINO trial.',
+       'Protocols — UK Kidney Association for hyperkalaemia, JBDS for diabetic ketoacidosis, NICE and ILAE for status epilepticus, King\u2019s College criteria for paracetamol liver failure, Baveno for variceal bleeding, Resuscitation Council for anaphylaxis, WHO SEARO for snake bite, WHO for dengue.',
+       'Infusion ranges and dilutions — standard critical care references and common unit practice. Your unit\u2019s own concentration always wins, which is why the dilution box is editable.']},
+  {h:'What this means in practice'},
+  {li:['Where the app and your unit protocol disagree, follow your unit protocol and write the difference in the note box on that drug.',
+       'Where the app and a current guideline disagree, the app is wrong. Tell whoever maintains it.',
+       'The training behind this content runs to mid-2026. Anything published after that is not in here.']}
+ ]},
 
 {n:'How bacteria are classified', al:'gram stain classification bacteriology cocci bacilli', k:'bugs',
  sub:'The map behind every empiric choice',
@@ -86,7 +117,7 @@ var THEORY = [
   {h:'Atypicals'},
   {drugs:['Azithromycin','Levofloxacin','Moxifloxacin','Doxycycline','Ciprofloxacin']},
   {h:'Candida'},
-  {drugs:['Fluconazole','Caspofungin','Micafungin','Liposomal amphotericin B','Voriconazole']},
+  {drugs:['Fluconazole','Caspofungin','Micafungin','Anidulafungin','Liposomal amphotericin B','Amphotericin B deoxycholate','Voriconazole']},
   {p:'C. krusei is intrinsically fluconazole-resistant and C. glabrata is often resistant. An echinocandin is the safe first move in an unstable or azole-exposed patient.'},
   {note:'Two drugs from the same family added together buys nothing. Metronidazole beside piperacillin-tazobactam, or beside a carbapenem, is the commonest example on any ward round.'}
  ]},
@@ -202,7 +233,7 @@ var THEORY = [
 {n:'Antibiotics with no renal adjustment', al:'CKD safe renal failure no adjustment', k:'practice',
  sub:'The list worth remembering when the kidneys are gone',
  b:[
-  {drugs:['Ceftriaxone','Linezolid','Metronidazole','Clindamycin','Azithromycin','Moxifloxacin','Doxycycline','Minocycline IV','Tigecycline','Caspofungin','Micafungin','Rifampicin','Liposomal amphotericin B']},
+  {drugs:['Ceftriaxone','Linezolid','Metronidazole','Clindamycin','Azithromycin','Moxifloxacin','Doxycycline','Minocycline IV','Tigecycline','Caspofungin','Micafungin','Anidulafungin','Rifampicin','Liposomal amphotericin B','Amphotericin B deoxycholate']},
   {p:'Polymyxin B belongs here too, and it is the one people get wrong: unlike colistimethate, it is not adjusted for renal function at all.'},
   {note:'No renal adjustment is not the same as no renal harm. Liposomal amphotericin needs no dose change and is still nephrotoxic. Watch the creatinine anyway.'},
   {drugs:['Polymyxin B']}
@@ -281,12 +312,14 @@ var THEORY = [
   {p:'Candida grows in blood cultures and comes from the gut, lines and the abdomen. Aspergillus and mucor do not grow in blood cultures and come from the airway and the sinuses.'},
   {h:'Is the patient stable, and azole-naive?'},
   {p:'Stable, no recent azole, likely C. albicans: fluconazole. Unstable, or azole-exposed, or the species is unknown: an echinocandin.'},
-  {drugs:['Fluconazole','Caspofungin','Micafungin']},
+  {drugs:['Fluconazole','Caspofungin','Micafungin','Anidulafungin']},
+  {p:'Between the echinocandins there is little to choose on efficacy. Anidulafungin needs no renal or hepatic adjustment and has the fewest interactions; caspofungin is reduced in Child-Pugh B; micafungin sits between the two.'},
   {h:'Aspergillus'},
   {p:'Voriconazole, with levels. Below CrCl 50 the intravenous vehicle accumulates, so switch to the oral route.'},
   {drugs:['Voriconazole','Liposomal amphotericin B']},
   {h:'Mucormycosis'},
-  {p:'Liposomal amphotericin at 5–10 mg/kg plus surgery. Voriconazole has no activity against it, and a patient deteriorating on voriconazole with sinus disease should raise the question.'},
+  {p:'Liposomal amphotericin at 5–10 mg/kg plus surgery. Voriconazole has no activity against it, and a patient deteriorating on voriconazole with sinus disease should raise the question. Posaconazole is the step-down and salvage option, and conventional amphotericin B deoxycholate is the fallback where the liposomal form is not available — at a real cost in kidney injury.'},
+  {drugs:['Posaconazole','Amphotericin B deoxycholate']},
   {note:'Candida in the urine or in a tracheal aspirate of a stable patient is colonisation. Treating it is one of the commonest unnecessary prescriptions in an ICU.'}
  ]}
 

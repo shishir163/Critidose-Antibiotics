@@ -2,6 +2,9 @@
    CritiDose — infusion data
    Version 1.0  ·  Step 2
    ------------------------------------------------------------
+   Sources: standard critical care references and common unit practice.
+   Not verified line by line. Your own concentration always wins.
+   ------------------------------------------------------------
    Record shape
    ------------
    n       name

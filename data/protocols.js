@@ -2,6 +2,11 @@
    CritiDose — protocols
    Version 1.0  ·  Step 3
    ------------------------------------------------------------
+   Sources: UK Kidney Association (hyperkalaemia), JBDS (DKA), NICE/ILAE
+   (status epilepticus), SNAP and the 21-hour regimen (paracetamol),
+   Baveno (variceal bleeding), Resuscitation Council (anaphylaxis),
+   WHO SEARO (snake bite), WHO (dengue). Not verified line by line.
+   ------------------------------------------------------------
    Record shape
    ------------
    n         name
@@ -94,9 +99,11 @@ var PROTOCOLS = [
  steps:[
   'Take a level at 4 hours after ingestion, or immediately if the timing is unknown or the ingestion was staggered.',
   'Activated charcoal if the patient presents within an hour and the airway is safe.',
-  'N-acetylcysteine, the standard three-bag regimen: 150 mg/kg over 1 hour, 50 mg/kg over 4 hours, 100 mg/kg over 16 hours.',
+  'N-acetylcysteine. Two regimens are in use and both deliver 300 mg/kg — check which one your unit has adopted before you write it up.',
+  'Classic 21-hour, three bags: 150 mg/kg over 1 hour, then 50 mg/kg over 4 hours, then 100 mg/kg over 16 hours.',
+  'SNAP 12-hour, two bags: 100 mg/kg over 2 hours, then 200 mg/kg over 10 hours. Fewer anaphylactoid reactions, shorter stay, and now the recommended regimen across much of the UK.',
   'Start it without waiting for the level if presentation is late, the ingestion staggered, or the timing unclear.',
-  'Recheck ALT, INR, creatinine and the paracetamol level at the end of the infusion. Continue N-acetylcysteine if the INR or ALT is still rising.',
+  'Recheck ALT, INR, creatinine and the paracetamol level at the end of the infusion, whichever regimen you used. Continue N-acetylcysteine if the ALT or INR is still rising or the paracetamol level is still detectable.',
   'Apply the King\'s College criteria and speak to a liver unit early if the pH is under 7.3, the INR over 6.5, the creatinine over 300 µmol/L, or there is grade 3–4 encephalopathy.'],
  cautions:[
   'The reaction during the first bag is usually a rate-related histamine reaction, not allergy. Stop the infusion, give an antihistamine, then restart more slowly.',

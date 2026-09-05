@@ -2,6 +2,12 @@
    CritiDose — antibiotic data
    Version 1.0  ·  Step 1
    ------------------------------------------------------------
+   Sources: Sanford Guide, The Renal Drug Handbook, product information.
+   Verified against source: colistimethate (Tsuji 2019 / Nation 2017),
+   vancomycin (Rybak 2020), ceftazidime-avibactam (AVYCAZ PI),
+   echinocandins and amphotericin (IDSA candidiasis 2016), posaconazole (PI).
+   Everything else is from training and has NOT been checked line by line.
+   ------------------------------------------------------------
    This file holds DATA ONLY. No app logic lives here, so it can
    be replaced on its own whenever a dose needs correcting.
 
@@ -209,7 +215,7 @@ var DRUGS = [
  tag:'MRSA, coagulase-negative staph',
  tg:['mrsa','nephro'],
  wt:true, wb:'tbw',
- load:'25–30 mg/kg (actual weight, max 3 g)', loadwhy:'The load uses actual body weight and is never reduced for renal failure.',
+ load:'20–35 mg/kg (actual weight, max 3 g)', loadwhy:'The load uses actual body weight and is never reduced for renal failure.',
  bands:[[999,'15–20 mg/kg q8–12h','ok'],[90,'15–20 mg/kg q12h','ok'],[49,'15–20 mg/kg q24h','adj'],[20,'One dose, then redose on the level','care']],
  ihd:'Load, then 500–1000 mg after each session — or dose on the pre-dialysis level',
  crrt:'15–20 mg/kg q24h, level-guided',
@@ -249,12 +255,12 @@ var DRUGS = [
 {n:'Colistimethate (CMS)', al:'Colistin Polymixin E Colomycin Coly-Mycin', c:'polymyxin',
  tag:'MDR/XDR Acinetobacter, Klebsiella, Pseudomonas',
  tg:['pseudo','cro','nephro'],
- load:'9 MIU IV (≈300 mg CBA)', loadwhy:'The load is identical for every patient — dialysis, anuric, normal kidneys. Never reduce it. Start the maintenance 12 hours later.',
- bands:[[999,'4.5 MIU IV q12h (9 MIU/day)','ok'],[50,'3–3.75 MIU q12h (6–7.5 MIU/day)','adj'],[30,'2.5 MIU q12h (5 MIU/day)','adj'],[10,'1.75 MIU q12h (3.5 MIU/day)','adj']],
- ihd:'3.5 MIU/day; on dialysis days add about 50% and give it after the session',
- crrt:'9–13.5 MIU/day divided q8–12h — CRRT clears it, do NOT reduce',
+ load:'9 MIU IV (300 mg CBA) over 30–60 min', loadwhy:'The load is identical for every patient — dialysis, anuric, normal kidneys. Never reduce it. The first maintenance dose follows 12–24 hours later.',
+ bands:[[999,'5.45 MIU q12h (10.9 MIU/day)','ok'],[90,'5.15 MIU q12h (10.3 MIU/day)','ok'],[80,'4.5 MIU q12h (9 MIU/day)','ok'],[70,'4.2 MIU q12h (8.35 MIU/day)','adj'],[60,'3.7 MIU q12h (7.4 MIU/day)','adj'],[50,'3.3 MIU q12h (6.65 MIU/day)','adj'],[40,'3 MIU q12h (5.9 MIU/day)','adj'],[30,'2.65 MIU q12h (5.3 MIU/day)','adj'],[20,'2.4 MIU q12h (4.85 MIU/day)','adj'],[10,'2.2 MIU q12h (4.4 MIU/day)','adj'],[5,'2 MIU q12h (3.95 MIU/day)','adj']],
+ ihd:'3.95 MIU/day (130 mg CBA) on non-dialysis days; add roughly 10% per hour of dialysis and give it after the session',
+ crrt:'6.65 MIU q12h (13.3 MIU/day, 440 mg CBA/day) — CRRT clears it, do NOT reduce',
  hep:'No change',
- notes:['Units matter: 1 MIU ≈ 80 mg colistimethate ≈ 30 mg colistin base activity. 9 MIU = 90 lac. Check what the vial in your hand is labelled in before drawing up.','Nephrotoxic — creatinine and urine output every day.','Nebulised colistin is an add-on in VAP, never a substitute for the IV dose.']},
+ notes:['Units matter: 1 MIU \u2248 33 mg colistin base activity \u2248 80 mg colistimethate. 9 MIU = 90 lac = 300 mg CBA. Check what the vial in your hand is labelled in before drawing up.','The maintenance ladder above comes from the Nation look-up table used by the 2019 international consensus, targeting an average steady-state colistin of 2 mg/L.','Nephrotoxic — creatinine and urine output every day.','Nebulised colistin is an add-on in VAP, never a substitute for the IV dose.','Use ideal body weight if the patient is obese.']},
 
 {n:'Polymyxin B', al:'Polymixin B', c:'polymyxin',
  tag:'MDR Gram-negative bacteraemia',
@@ -376,6 +382,34 @@ var DRUGS = [
  hep:'Child-Pugh A/B: full load, halve the maintenance. Child-Pugh C: avoid',
  lvl:'Trough 1–5.5 mg/L.',
  notes:['The IV cyclodextrin vehicle accumulates below CrCl 50 — go oral.','Visual disturbance, hallucinations, hepatotoxicity.']},
+
+{n:'Anidulafungin', al:'Ecalta Eraxis', c:'antifungal',
+ tag:'Candidaemia, invasive candidiasis',
+ tg:['ckdsafe'],
+ load:'200 mg IV', loadwhy:'A load is needed on day 1 — the maintenance alone takes days to reach target.',
+ bands:[[999,'100 mg IV q24h','ok']],
+ ihd:'No change', crrt:'No change',
+ hep:'No change — degraded chemically in plasma, not by the liver',
+ notes:['No renal and no hepatic adjustment at all. The echinocandin for a patient whose kidneys and liver have both failed.','Fewest drug interactions of the three echinocandins — useful alongside tacrolimus, rifampicin or an azole.','Endocarditis and other deep infection: 100–200 mg daily has been used.','Not for a urinary source — negligible urine levels, like the whole class.']},
+
+{n:'Posaconazole', al:'Noxafil Posacon', c:'antifungal',
+ tag:'Mould prophylaxis, mucormycosis, salvage aspergillosis',
+ tg:['qt'],
+ load:'300 mg IV/PO twice on day 1', loadwhy:'Day-1 twice-daily loading, then once daily. A switch between the IV and the delayed-release tablet needs no new load.',
+ bands:[[999,'300 mg IV/PO q24h','ok'],[50,'Use the tablet or suspension — the IV vehicle accumulates','care']],
+ ihd:'Use the oral route', crrt:'IV acceptable — cyclodextrin is cleared',
+ hep:'No routine adjustment; monitor LFTs',
+ lvl:'Trough above 0.7 mg/L for prophylaxis, above 1.0–1.25 mg/L for treatment. Take it after 5–7 days.',
+ notes:['Covers mucorales, which voriconazole does not. That is the main reason to reach for it here.','The IV formulation carries cyclodextrin like voriconazole, so below CrCl 50 go oral.','The delayed-release tablet absorbs far better than the old suspension — do not swap them dose for dose.','Strong CYP3A4 inhibitor: tacrolimus, ciclosporin, statins and vincristine all need attention.']},
+
+{n:'Amphotericin B deoxycholate', al:'Conventional amphotericin Fungizone AmB-d', c:'antifungal',
+ tag:'Candidaemia, cryptococcus, mucormycosis where lipid is unavailable',
+ tg:['nephro'],
+ wt:true, wb:'tbw',
+ bands:[[999,'0.7–1 mg/kg IV q24h (up to 1.5 mg/kg in mucormycosis)','ok'],[30,'Same dose — but switch to the liposomal form if you can','care']],
+ ihd:'Same dose, given after dialysis', crrt:'Same dose',
+ hep:'No change',
+ notes:['No renal dose adjustment, and yet it is the most nephrotoxic drug on this list. If the liposomal form is available, use it instead.','Pre-load with 500–1000 mL of saline before each dose, and replace potassium and magnesium daily.','Infusion reactions — rigors, fever, vomiting — in the first hours. Premedicate and run it over 4–6 hours.','Not interchangeable milligram for milligram with the liposomal form: 1 mg/kg of this is not 1 mg/kg of AmBisome.']},
 
 {n:'Liposomal amphotericin B', al:'AmBisome Ampholip Fungisome', c:'antifungal',
  tag:'Mucormycosis, refractory fungal infection',
