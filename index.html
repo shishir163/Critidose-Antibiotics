@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0A0E13">
+<meta name="description" content="ICU dosing at the bedside — renal, hepatic and RRT adjustment.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CritiDose">
+<title>CritiDose</title>
+<style>
+:root{
+  --bg:#0A0E13; --panel:#131A22; --panel2:#1B2530; --line:#26323E;
+  --ink:#EAF1F7; --dim:#93A6B6; --faint:#61748A;
+
+  /* four signal colours — these mean something, nothing else uses them */
+  --ok:#34D399; --adj:#FBBF24; --avoid:#F87171; --info:#60A5FA;
+
+  --r:14px; --rl:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(28px + env(safe-area-inset-bottom));
+}
+.wrap{max-width:660px;margin:0 auto;padding:0 14px}
+.mono{font-variant-numeric:tabular-nums}
+button{font-family:inherit}
+:focus-visible{outline:2px solid var(--info);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ---------- patient bar ---------- */
+.pbar{
+  position:sticky;top:0;z-index:40;background:rgba(10,14,19,.93);
+  backdrop-filter:blur(16px);border-bottom:1px solid var(--line);
+  padding-top:env(safe-area-inset-top);
+}
+.pbar .in{max-width:660px;margin:0 auto;padding:9px 14px;display:flex;align-items:center;gap:12px;cursor:pointer}
+.brand{font-size:15px;font-weight:650;letter-spacing:-.01em;flex:none}
+.brand small{display:block;font-size:10.5px;color:var(--faint);font-weight:400;letter-spacing:.01em}
+.pstat{margin-left:auto;display:flex;align-items:center;gap:10px;text-align:right}
+.pnum{font-size:25px;font-weight:650;line-height:1;letter-spacing:-.02em}
+.pnum small{display:block;font-size:10px;color:var(--faint);font-weight:400;letter-spacing:.02em;margin-top:3px}
+.pchip{font-size:11px;padding:4px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+.caret{color:var(--faint);font-size:13px;flex:none}
+
+/* ---------- generic ---------- */
+h2{font-size:20px;font-weight:650;letter-spacing:-.015em;margin:20px 0 3px}
+h3{font-size:12.5px;color:var(--dim);font-weight:600;margin:20px 0 8px}
+.lede{color:var(--faint);font-size:13px;margin:0 0 16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:5px}
+input,select,textarea{
+  width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);
+  border-radius:10px;padding:11px 12px;font-size:16px;font-family:inherit;
+  font-variant-numeric:tabular-nums;appearance:none
+}
+textarea{min-height:76px;line-height:1.5;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--info);outline-offset:-1px;border-color:transparent}
+select{background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath fill='%2393A6B6' d='M0 0h10L5 6z'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;background-size:10px;padding-right:32px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.segs{display:flex;gap:6px;flex-wrap:wrap}
+.seg{flex:1;min-width:62px;text-align:center;padding:9px 6px;font-size:13px;border-radius:9px;
+  background:var(--bg);border:1px solid var(--line);color:var(--dim);cursor:pointer;user-select:none}
+.seg.on{background:var(--info);border-color:var(--info);color:#06131C;font-weight:650}
+.btn{width:100%;background:var(--info);color:#06131C;border:0;border-radius:11px;padding:13px;
+  font-size:15px;font-weight:650;cursor:pointer;margin-top:4px}
+.btn.ghost{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+.back{background:none;border:0;color:var(--info);font-size:15px;padding:14px 0 4px;cursor:pointer}
+.hide{display:none!important}
+.disc{font-size:11.5px;color:var(--faint);text-align:center;padding:24px 12px 8px;line-height:1.65}
+.empty{text-align:center;color:var(--faint);padding:40px 20px;font-size:14px;line-height:1.6}
+
+/* ---------- dashboard ---------- */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.tile{
+  position:relative;border-radius:var(--rl);padding:15px 14px 14px;cursor:pointer;
+  background:var(--panel);border:1px solid var(--line);overflow:hidden;min-height:104px;
+  display:flex;flex-direction:column;justify-content:flex-end
+}
+.tile .glow{position:absolute;inset:-40% 40% 55% -20%;border-radius:50%;filter:blur(30px);opacity:.4}
+.tile .ic{position:relative;margin-bottom:auto}
+.tile .ic svg{width:22px;height:22px}
+.tile .tn{position:relative;font-size:15.5px;font-weight:650;letter-spacing:-.01em}
+.tile .ts{position:relative;font-size:11.5px;color:var(--faint);margin-top:2px;line-height:1.35}
+.tile.soon .tn,.tile.soon .ic{opacity:.55}
+.tile:active{transform:scale(.985)}
+
+/* ---------- rows ---------- */
+.searchbar{position:relative;margin-bottom:10px}
+.searchbar input{padding-left:38px}
+.searchbar svg{position:absolute;left:13px;top:13px;opacity:.5}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:6px 12px;border-radius:999px;font-size:12.5px;background:var(--panel2);
+  border:1px solid var(--line);color:var(--dim);cursor:pointer;white-space:nowrap}
+.row{display:flex;align-items:center;gap:11px;padding:12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:12px;margin-bottom:7px;cursor:pointer}
+.row:active{background:var(--panel2)}
+.bar{width:4px;height:34px;border-radius:3px;flex:none}
+.rname{font-weight:600;font-size:15.5px;display:flex;align-items:center;gap:7px}
+.rsub{font-size:12px;color:var(--faint);margin-top:1px}
+.rgo{margin-left:auto;color:var(--faint);font-size:18px;flex:none}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.lab{font-size:10px;border:1px solid currentColor;border-radius:4px;padding:0 4px;color:var(--dim);font-weight:600}
+
+/* ---------- drug detail ---------- */
+.hero{border-radius:16px;padding:17px;margin-bottom:12px;border:1px solid}
+.hero .lbl{font-size:11.5px;margin-bottom:6px;font-weight:600}
+.hero .dose{font-size:clamp(25px,7vw,34px);font-weight:700;line-height:1.15;letter-spacing:-.02em}
+.hero .note{font-size:13.5px;margin-top:9px;color:var(--dim)}
+.load{background:var(--panel);border:1px dashed var(--adj);border-radius:12px;padding:13px;margin-bottom:10px}
+.load .lbl{font-size:11.5px;color:var(--adj);margin-bottom:4px;font-weight:600}
+.load .val{font-size:19px;font-weight:650}
+.load .why{font-size:12.5px;color:var(--dim);margin-top:5px}
+.flag{display:flex;gap:9px;border-radius:11px;padding:11px 12px;margin-bottom:9px;font-size:13.5px;line-height:1.45}
+.flag.info{background:rgba(96,165,250,.09);border:1px solid rgba(96,165,250,.32)}
+.flag.adj{background:rgba(251,191,36,.09);border:1px solid rgba(251,191,36,.32)}
+.flag.avoid{background:rgba(248,113,113,.09);border:1px solid rgba(248,113,113,.32)}
+.flag .ic{flex:none;opacity:.9}
+.kv{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv .k{color:var(--dim);flex:none;width:92px;font-size:12.5px;padding-top:1px}
+.kv .v{flex:1}
+.ladder div{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.ladder div:last-child{border-bottom:0}
+.ladder .cur{color:var(--info);font-weight:600}
+.ladder span:first-child{flex:none;color:var(--dim)}
+.ladder .cur span:first-child{color:var(--info)}
+.work{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13px;
+  line-height:1.75;color:var(--dim)}
+.work b{color:var(--ink);font-weight:600}
+.work .step{padding:4px 0}
+details>summary{cursor:pointer;font-size:12.5px;color:var(--info);padding:6px 0;list-style:none}
+details>summary::-webkit-details-marker{display:none}
+details>summary::before{content:'▸ ';display:inline-block;transition:transform .15s}
+details[open]>summary::before{content:'▾ '}
+.tagline{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.tg{font-size:11.5px;padding:4px 9px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--dim)}
+</style>
+</head>
+<body>
+
+<!-- ============ PATIENT BAR ============ -->
+<div class="pbar">
+  <div class="in" onclick="openPatient()">
+    <div class="brand">CritiDose<small>Right dose, right patient, 3 AM</small></div>
+    <div class="pstat">
+      <span class="pchip hide" id="pchip-rrt"></span>
+      <span class="pchip hide" id="pchip-cp"></span>
+      <div><div class="pnum mono" id="pnum">—</div><small id="plab">CrCl mL/min</small></div>
+    </div>
+    <div class="caret" id="caret">▾</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ============ PATIENT SHEET ============ -->
+<section id="v-patient" class="hide">
+  <h2>Patient</h2>
+  <p class="lede">Fill this once at the start of the round. Every dose in the app reads from it.</p>
+
+  <div class="card">
+    <div class="grid3" style="margin-bottom:11px">
+      <div><label for="age">Age (yr)</label><input id="age" type="number" inputmode="numeric" placeholder="55"></div>
+      <div><label for="wt">Weight (kg)</label><input id="wt" type="number" inputmode="decimal" placeholder="65"></div>
+      <div><label for="ht">Height (cm)</label><input id="ht" type="number" inputmode="numeric" placeholder="165"></div>
+    </div>
+    <div style="margin-bottom:11px">
+      <label>Sex</label>
+      <div class="segs">
+        <div class="seg on" data-sex="M" onclick="pick('sex',this)">Male</div>
+        <div class="seg" data-sex="F" onclick="pick('sex',this)">Female</div>
+      </div>
+    </div>
+    <div class="grid2" style="margin-bottom:11px">
+      <div><label for="cr">Creatinine</label><input id="cr" type="number" inputmode="decimal" step="0.01" placeholder="1.2"></div>
+      <div><label for="crunit">Unit</label>
+        <select id="crunit"><option value="mgdl">mg/dL</option><option value="umol">µmol/L</option></select>
+      </div>
+    </div>
+    <label style="display:flex;gap:9px;align-items:flex-start;margin:0;cursor:pointer">
+      <input type="checkbox" id="aki" style="width:18px;height:18px;flex:none;margin-top:1px;accent-color:var(--adj)">
+      <span style="color:var(--dim);font-size:13px;line-height:1.4">Creatinine is rising or unstable</span>
+    </label>
+    <div id="wtline" style="font-size:12px;color:var(--faint);margin-top:12px" class="mono"></div>
+  </div>
+
+  <div class="card">
+    <label>Renal replacement</label>
+    <div class="segs">
+      <div class="seg on" data-rrt="none" onclick="pick('rrt',this)">None</div>
+      <div class="seg" data-rrt="ihd" onclick="pick('rrt',this)">IHD</div>
+      <div class="seg" data-rrt="crrt" onclick="pick('rrt',this)">CRRT</div>
+      <div class="seg" data-rrt="sled" onclick="pick('rrt',this)">SLED</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Liver — Child-Pugh class</label>
+    <div class="segs">
+      <div class="seg on" data-cp="none" onclick="pick('cp',this)">Normal</div>
+      <div class="seg" data-cp="A" onclick="pick('cp',this)">A</div>
+      <div class="seg" data-cp="B" onclick="pick('cp',this)">B</div>
+      <div class="seg" data-cp="C" onclick="pick('cp',this)">C</div>
+    </div>
+    <div style="font-size:12px;color:var(--faint);margin-top:10px">
+      Don't know the class? <a href="#scores" style="color:var(--info)">Work it out from bilirubin, albumin and INR</a>.
+    </div>
+  </div>
+
+  <button class="btn" onclick="nav('home')">Done</button>
+  <button class="btn ghost" onclick="clearPatient()">Clear patient</button>
+  <div class="disc">Decision support only. You remain the prescriber — check every dose against the patient in front of you.</div>
+</section>
+
+<!-- ============ HOME ============ -->
+<section id="v-home">
+  <h2 id="greet">Where to?</h2>
+  <p class="lede" id="homesub">Set the patient once, then everything else is two taps away.</p>
+  <div class="tiles" id="tiles"></div>
+  <div class="disc">CritiDose <span id="ver"></span> · works offline · data stays on this device</div>
+</section>
+
+<!-- ============ ANTIBIOTICS ============ -->
+<section id="v-abx" class="hide">
+  <h2>Antibiotics</h2>
+  <p class="lede" id="abxsub"></p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="q" type="search" placeholder="Meropenem, Zosyn, colistin, polymixin E…" oninput="drawList()">
+  </div>
+  <div class="chips" id="chips-class"></div>
+  <div class="chips" id="chips-tag"></div>
+  <div id="rows"></div>
+</section>
+
+<section id="v-drug" class="hide"></section>
+
+<!-- ============ CALCULATORS ============ -->
+<section id="v-calc" class="hide">
+  <h2>Calculators</h2>
+  <p class="lede">These read the patient bar. Change a number there and everything here follows.</p>
+  <div id="calcbody"></div>
+</section>
+
+<!-- ============ SCORES ============ -->
+<section id="v-scores" class="hide">
+  <h2>Scores</h2>
+  <p class="lede">Child-Pugh feeds straight into the liver line on every drug page.</p>
+  <div class="card">
+    <div style="font-size:15.5px;font-weight:650;margin-bottom:12px">Child-Pugh</div>
+    <div style="margin-bottom:11px"><label>Bilirubin (mg/dL)</label>
+      <div class="segs"><div class="seg on" data-cp1="1" onclick="cpPick(this)">under 2</div>
+      <div class="seg" data-cp1="2" onclick="cpPick(this)">2–3</div>
+      <div class="seg" data-cp1="3" onclick="cpPick(this)">over 3</div></div></div>
+    <div style="margin-bottom:11px"><label>Albumin (g/dL)</label>
+      <div class="segs"><div class="seg on" data-cp2="1" onclick="cpPick(this)">over 3.5</div>
+      <div class="seg" data-cp2="2" onclick="cpPick(this)">2.8–3.5</div>
+      <div class="seg" data-cp2="3" onclick="cpPick(this)">under 2.8</div></div></div>
+    <div style="margin-bottom:11px"><label>INR</label>
+      <div class="segs"><div class="seg on" data-cp3="1" onclick="cpPick(this)">under 1.7</div>
+      <div class="seg" data-cp3="2" onclick="cpPick(this)">1.7–2.3</div>
+      <div class="seg" data-cp3="3" onclick="cpPick(this)">over 2.3</div></div></div>
+    <div style="margin-bottom:11px"><label>Ascites</label>
+      <div class="segs"><div class="seg on" data-cp4="1" onclick="cpPick(this)">None</div>
+      <div class="seg" data-cp4="2" onclick="cpPick(this)">Controlled</div>
+      <div class="seg" data-cp4="3" onclick="cpPick(this)">Refractory</div></div></div>
+    <div><label>Encephalopathy</label>
+      <div class="segs"><div class="seg on" data-cp5="1" onclick="cpPick(this)">None</div>
+      <div class="seg" data-cp5="2" onclick="cpPick(this)">Grade 1–2</div>
+      <div class="seg" data-cp5="3" onclick="cpPick(this)">Grade 3–4</div></div></div>
+  </div>
+  <div id="cpout"></div>
+  <h3>Coming later</h3>
+  <div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">
+    NEWS2 and SOFA arrive in step 4, once the dosing side has been through a few weeks of rounds.
+  </div>
+</section>
+
+<!-- ============ MY NOTES ============ -->
+<section id="v-mine" class="hide">
+  <h2>My entries</h2>
+  <p class="lede">Notes you write on a drug page collect here. They live on this device and survive every app update.</p>
+  <div id="minebody"></div>
+</section>
+
+<!-- ============ NOT YET ============ -->
+<section id="v-soon" class="hide"></section>
+
+</div>
+
+<script src="data/antibiotics.js"></script>
+<script>
+/* ============================================================
+   CritiDose — app logic
+   ============================================================ */
+var APP_VERSION = '1.0 · step 1';
+
+var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null};
+var NOTES = {};
+var CP = {1:1,2:1,3:1,4:1,5:1};
+
+/* ---------- storage ---------- */
+function save(k,v){ try{ localStorage.setItem('critidose:'+k, v) }catch(e){} }
+function read(k){ try{ return localStorage.getItem('critidose:'+k) }catch(e){ return null } }
+
+/* ---------- helpers ---------- */
+function $(id){ return document.getElementById(id) }
+function num(id){ var v=parseFloat($(id).value); return isFinite(v)?v:null }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+function classCol(k){ for(var i=0;i<CLASSES.length;i++) if(CLASSES[i][0]===k) return CLASSES[i][2]; return '#94A3B8' }
+function tagName(k){ for(var i=0;i<TAGS.length;i++) if(TAGS[i][0]===k) return TAGS[i][1]; return k }
+function sigCol(s){ return s==='ok'?'var(--ok)':s==='avoid'?'var(--avoid)':s==='care'?'var(--adj)':'var(--adj)' }
+function sigBg(s){ return s==='ok'?'rgba(52,211,153,.10)':s==='avoid'?'rgba(248,113,113,.10)':'rgba(251,191,36,.10)' }
+function r1(x){ return x<10 ? Math.round(x*10)/10 : Math.round(x) }
+
+/* ---------- clinical maths ---------- */
+function ibw(){
+  var h=num('ht'); if(!h) return null;
+  var v=(S.sex==='M'?50:45.5)+2.3*((h-152.4)/2.54);
+  return v>0?v:null;
+}
+function adjbw(){
+  var a=num('wt'), i=ibw();
+  if(!a||!i) return null;
+  return i+0.4*(a-i);
+}
+function dosingWt(){
+  var a=num('wt'), i=ibw();
+  if(!a) return null;
+  if(!i) return a;
+  if(a<i) return a;          /* underweight — use actual */
+  if(a>i*1.3) return adjbw();/* obese — use adjusted */
+  return i;                  /* normal — use ideal */
+}
+function wtBasis(){
+  var a=num('wt'), i=ibw();
+  if(!a) return '';
+  if(!i) return 'actual weight (no height yet)';
+  if(a<i) return 'actual weight — below ideal';
+  if(a>i*1.3) return 'adjusted body weight — over 30% above ideal';
+  return 'ideal body weight';
+}
+/* the weight a particular drug should be dosed on */
+function wtFor(d){
+  var a=num('wt'), i=ibw();
+  if(!a) return null;
+  if(d && d.wb==='tbw') return a;
+  if(d && d.wb==='ibw') return i||a;
+  return dosingWt();
+}
+function wtForBasis(d){
+  var a=num('wt'), i=ibw();
+  if(!a) return '';
+  if(d && d.wb==='tbw') return 'actual body weight — this drug is dosed on total weight, not ideal';
+  if(d && d.wb==='ibw') return i?'ideal body weight':'actual weight (no height yet)';
+  return wtBasis();
+}
+function crVal(){
+  var c=num('cr'); if(!c) return null;
+  return $('crunit').value==='umol' ? c/88.4 : c;
+}
+function crcl(){
+  var a=num('age'), w=dosingWt(), c=crVal();
+  if(!a||!w||!c) return null;
+  return Math.round(((140-a)*w*(S.sex==='F'?0.85:1))/(72*c));
+}
+function stage(v){
+  if(v>=90) return 'G1'; if(v>=60) return 'G2'; if(v>=45) return 'G3a';
+  if(v>=30) return 'G3b'; if(v>=15) return 'G4'; return 'G5';
+}
+function crclCol(v){
+  if(v===null) return 'var(--ink)';
+  if(v>=130) return 'var(--info)';
+  if(v>=50) return 'var(--ok)';
+  if(v>=20) return 'var(--adj)';
+  return 'var(--avoid)';
+}
+/* first band whose ceiling is at or above the CrCl */
+function bandFor(d,v){
+  var s=d.bands.slice().sort(function(a,b){return a[0]-b[0]});
+  for(var i=0;i<s.length;i++) if(v<=s[i][0]) return s[i];
+  return s[s.length-1];
+}
+/* turn "15–20 mg/kg q12h" into "… → 936–1248 mg" */
+function withMg(txt,w){
+  if(!w||!txt) return txt;
+  var m=txt.match(/([\d.]+)\s*[–-]\s*([\d.]+)\s*mg\/kg/);
+  if(m) return txt+'  →  '+r1(m[1]*w)+'–'+r1(m[2]*w)+' mg';
+  var m2=txt.match(/([\d.]+)\s*mg\/kg/);
+  if(m2) return txt+'  →  '+r1(m2[1]*w)+' mg';
+  return txt;
+}
+
+/* ---------- patient bar ---------- */
+function pick(kind,el){
+  var attr='data-'+kind;
+  document.querySelectorAll('['+attr+']').forEach(function(e){e.classList.remove('on')});
+  el.classList.add('on');
+  S[kind]=el.getAttribute(attr);
+  refresh();
+}
+function refresh(){
+  var v=crcl();
+  var n=$('pnum'), l=$('plab');
+  if(S.rrt!=='none'){
+    n.textContent=S.rrt.toUpperCase(); n.style.color='var(--info)';
+    l.textContent = v!==null ? ('CrCl '+v+' · '+stage(v)) : 'renal replacement';
+  } else if(v===null){
+    n.textContent='—'; n.style.color='var(--ink)'; l.textContent='CrCl mL/min';
+  } else {
+    n.textContent=v; n.style.color=crclCol(v);
+    l.textContent = (v>=130?'augmented · ':'')+stage(v)+' · mL/min';
+  }
+  var rc=$('pchip-rrt'); rc.classList.toggle('hide', S.rrt==='none');
+  rc.textContent=S.rrt.toUpperCase();
+  var cc=$('pchip-cp'); cc.classList.toggle('hide', S.cp==='none');
+  cc.textContent='Child-Pugh '+S.cp;
+
+  var a=num('wt'), i=ibw(), d=dosingWt(), t='';
+  if(d){
+    t='Dosing weight '+r1(d)+' kg — '+wtBasis();
+    if(i) t+='   ·   IBW '+r1(i)+' kg   ·   actual '+a+' kg';
+  } else t='Add weight and height for the weight-based drugs.';
+  $('wtline').textContent=t;
+
+  savePatient();
+  if(S.view==='abx') drawList();
+  if(S.view==='drug') showDrug(S.drug,true);
+  if(S.view==='calc') drawCalc();
+  if(S.view==='home') homeSub();
+}
+function savePatient(){
+  save('pt', JSON.stringify({
+    age:$('age').value, wt:$('wt').value, ht:$('ht').value, cr:$('cr').value,
+    unit:$('crunit').value, aki:$('aki').checked, sex:S.sex, rrt:S.rrt, cp:S.cp
+  }));
+}
+function loadPatient(){
+  var raw=read('pt'); if(!raw) return;
+  try{
+    var p=JSON.parse(raw);
+    $('age').value=p.age||''; $('wt').value=p.wt||''; $('ht').value=p.ht||'';
+    $('cr').value=p.cr||''; $('crunit').value=p.unit||'mgdl'; $('aki').checked=!!p.aki;
+    S.sex=p.sex||'M'; S.rrt=p.rrt||'none'; S.cp=p.cp||'none';
+    setSeg('sex',S.sex); setSeg('rrt',S.rrt); setSeg('cp',S.cp);
+  }catch(e){}
+}
+function setSeg(kind,val){
+  document.querySelectorAll('[data-'+kind+']').forEach(function(e){
+    e.classList.toggle('on', e.getAttribute('data-'+kind)===val);
+  });
+}
+function clearPatient(){
+  if(!confirm('Clear this patient? Your saved drug notes are not touched.')) return;
+  ['age','wt','ht','cr'].forEach(function(id){$(id).value=''});
+  $('aki').checked=false;
+  S.sex='M'; S.rrt='none'; S.cp='none';
+  setSeg('sex','M'); setSeg('rrt','none'); setSeg('cp','none');
+  refresh();
+}
+function openPatient(){ nav('patient') }
+
+/* ---------- routing ---------- */
+var VIEWS=['home','patient','abx','drug','calc','scores','mine','soon'];
+function nav(v,arg){
+  var h = v==='drug' ? '#drug/'+arg : (v==='soon' ? '#soon/'+arg : '#'+v);
+  if(location.hash!==h) location.hash=h; else route();
+}
+function route(){
+  var h=location.hash.replace('#','')||'home';
+  var parts=h.split('/'), v=parts[0], arg=parts[1];
+  if(VIEWS.indexOf(v)<0){ v='home' }
+  S.view=v;
+  VIEWS.forEach(function(x){ $('v-'+x).classList.toggle('hide', x!==v) });
+  $('caret').textContent = v==='patient' ? '▴' : '▾';
+  if(v==='home'){ homeSub() }
+  if(v==='abx'){ drawChips(); drawList() }
+  if(v==='drug'){ showDrug(parseInt(arg,10)) }
+  if(v==='calc'){ drawCalc() }
+  if(v==='mine'){ drawMine() }
+  if(v==='soon'){ drawSoon(arg) }
+  if(v==='scores'){ cpScore() }
+  window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',route);
+
+/* ---------- dashboard ---------- */
+var TILES=[
+  ['Antibiotics','#2DD4BF','Renal, liver and RRT dosing','abx','ready',
+   '<path d="M4 13.5 13.5 4a5 5 0 0 1 7 7L11 20.5a5 5 0 0 1-7-7Z"/><path d="M8.5 8.5 16 16"/>'],
+  ['Infusions','#F472B6','mL/hr from your own dilution','infusions','step 2',
+   '<path d="M12 3v6M9 9h6l1 9a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3l1-9Z"/><path d="M8.6 15h6.8"/>'],
+  ['Formulary','#60A5FA','The everyday ICU drug list','formulary','step 2',
+   '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V4Z"/><path d="M5 16h13"/>'],
+  ['Protocols','#FBBF24','Unit protocols, step by step','protocols','step 3',
+   '<path d="M8 4h8v3H8zM6 7h12v13H6z"/><path d="M9.5 12h5M9.5 16h5"/>'],
+  ['Disease-wise','#34D399','What to start, by site','disease','step 3',
+   '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/>'],
+  ['Theory','#A78BFA','Spectrum, classes, bacteriology','theory','step 4',
+   '<path d="M12 4 4 8l8 4 8-4-8-4Z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/>'],
+  ['Calculators','#22D3EE','CrCl, ideal and adjusted weight','calc','ready',
+   '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h2M13 12h2M8.5 16h2M13 16h2"/>'],
+  ['Scores','#FB923C','Child-Pugh now, more later','scores','ready',
+   '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>'],
+  ['My entries','#F0ABFC','Your own notes on any drug','mine','ready',
+   '<path d="M4 20h16"/><path d="M14.5 4.5 19 9 9 19H4.5V14.5Z"/>']
+];
+function drawTiles(){
+  $('tiles').innerHTML=TILES.map(function(t){
+    var ready=t[4]==='ready';
+    var target = ready ? t[3] : 'soon';
+    var onclick = ready ? "nav('"+t[3]+"')" : "nav('soon','"+t[3]+"')";
+    return '<div class="tile'+(ready?'':' soon')+'" onclick="'+onclick+'" role="button" tabindex="0">'+
+      '<div class="glow" style="background:'+t[1]+'"></div>'+
+      '<div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="'+t[1]+'" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+t[5]+'</svg></div>'+
+      '<div class="tn">'+t[0]+'</div>'+
+      '<div class="ts">'+(ready?t[2]:t[2]+' · '+t[4])+'</div></div>';
+  }).join('');
+}
+function homeSub(){
+  var v=crcl();
+  var s;
+  if(S.rrt!=='none') s='Patient is on '+S.rrt.toUpperCase()+'. Doses will follow the RRT line, not the CrCl.';
+  else if(v===null) s='No patient yet. Tap the bar at the top and fill in age, weight and creatinine.';
+  else s='CrCl '+v+' mL/min · '+stage(v)+(v>=130?' · augmented clearance':'')+
+         (num('wt')?' · dosing weight '+r1(dosingWt())+' kg':'');
+  $('homesub').textContent=s;
+}
+
+/* ---------- antibiotic list ---------- */
+function drawChips(){
+  var cl=[['all','All']].concat(CLASSES.map(function(c){return [c[0],c[1]]}));
+  $('chips-class').innerHTML=cl.map(function(c){
+    var col=c[0]==='all'?'#60A5FA':classCol(c[0]);
+    var on=S.cls===c[0];
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.cls=\''+c[0]+'\';drawChips();drawList()">'+c[1]+'</div>';
+  }).join('');
+  $('chips-tag').innerHTML=TAGS.map(function(t){
+    var on=S.tag===t[0];
+    return '<div class="chip" style="'+(on?'background:var(--panel2);border-color:var(--info);color:var(--info);font-weight:650':'')+
+      '" onclick="S.tag=(S.tag===\''+t[0]+'\'?\'\':\''+t[0]+'\');drawChips();drawList()">'+t[1]+'</div>';
+  }).join('');
+}
+function matches(d,q){
+  if(!q) return true;
+  return (d.n+' '+(d.al||'')+' '+d.tag).toLowerCase().indexOf(q)>-1;
+}
+function drawList(){
+  var q=($('q').value||'').toLowerCase().trim();
+  var v=crcl();
+  var list=[];
+  for(var i=0;i<DRUGS.length;i++){
+    var d=DRUGS[i];
+    if(S.cls!=='all' && d.c!==S.cls) continue;
+    if(S.tag && (d.tg||[]).indexOf(S.tag)<0) continue;
+    if(!matches(d,q)) continue;
+    list.push([d,i]);
+  }
+  $('abxsub').textContent = list.length+' of '+DRUGS.length+' drugs'+
+    (v!==null&&S.rrt==='none' ? ' · the dot shows what this patient needs' : '');
+  $('rows').innerHTML = list.length ? list.map(function(p){
+    var d=p[0], i=p[1], dot='';
+    if(S.rrt!=='none'){
+      dot='<span class="dot" style="background:var(--adj)"></span>';
+    } else if(v!==null){
+      dot='<span class="dot" style="background:'+sigCol(bandFor(d,v)[2])+'"></span>';
+    }
+    return '<div class="row" onclick="nav(\'drug\','+i+')" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+classCol(d.c)+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+dot+esc(d.n)+
+      (d.lvl?'<span class="lab">LEVEL</span>':'')+
+      (NOTES[d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      '<div class="rsub">'+esc(d.tag)+'</div></div>'+
+      '<div class="rgo">›</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.<br>Try the generic name, or clear the filters above.</div>';
+}
+
+/* ---------- drug detail ---------- */
+function kv(k,v){ return '<div class="kv"><div class="k">'+k+'</div><div class="v">'+(v||'—')+'</div></div>' }
+
+function showDrug(i,keepScroll){
+  if(isNaN(i)||!DRUGS[i]){ nav('abx'); return }
+  S.drug=i;
+  var d=DRUGS[i], v=crcl(), w=wtFor(d), h='';
+
+  h+='<button class="back" onclick="nav(\'abx\')">‹ All antibiotics</button>';
+  h+='<div style="display:flex;align-items:center;gap:11px;margin:6px 0 12px">'+
+     '<div class="bar" style="background:'+classCol(d.c)+';height:30px"></div>'+
+     '<div><div style="font-size:21px;font-weight:650;letter-spacing:-.015em">'+esc(d.n)+'</div>'+
+     '<div class="rsub">'+esc(d.tag)+'</div></div></div>';
+
+  if(d.tg&&d.tg.length){
+    h+='<div class="tagline">'+d.tg.map(function(t){return '<span class="tg">'+tagName(t)+'</span>'}).join('')+'</div>';
+  }
+
+  /* ---- the dose ---- */
+  var dose, st, note;
+  if(S.rrt==='ihd'){ dose=d.ihd; st='adj'; note='Intermittent haemodialysis — time it around the session.'; }
+  else if(S.rrt==='crrt'){ dose=d.crrt; st='adj'; note='Continuous renal replacement therapy.'; }
+  else if(S.rrt==='sled'){ dose=d.crrt; st='adj'; note='SLED — dose as for CRRT and give after the session where you can.'; }
+  else if(v===null){ dose='Fill in the patient'; st='care'; note='Age, weight and creatinine take ten seconds. Tap the bar at the top.'; }
+  else {
+    var b=bandFor(d,v); dose=withMg(b[1],w); st=b[2];
+    note = v>=130 ? 'CrCl '+v+' — augmented clearance. Take the top of the range, and extend the infusion where the drug allows.'
+         : st==='ok' ? 'CrCl '+v+' · '+stage(v)+' — no reduction needed.'
+         : st==='avoid' ? 'CrCl '+v+' · '+stage(v)+' — this drug is a poor choice here.'
+         : 'CrCl '+v+' · '+stage(v)+' — reduced for renal function.';
+  }
+  h+='<div class="hero" style="background:'+sigBg(st)+';border-color:'+sigCol(st)+'">'+
+     '<div class="lbl" style="color:'+sigCol(st)+'">Maintenance dose</div>'+
+     '<div class="dose">'+esc(dose)+'</div><div class="note">'+esc(note)+'</div></div>';
+
+  /* ---- loading dose ---- */
+  if(d.load){
+    h+='<div class="load"><div class="lbl">Loading dose — give this first</div>'+
+       '<div class="val">'+esc(withMg(d.load,w))+'</div>'+
+       (d.loadwhy?'<div class="why">'+esc(d.loadwhy)+'</div>':'')+'</div>';
+  }
+
+  /* ---- warnings ---- */
+  if($('aki').checked && S.rrt==='none'){
+    h+='<div class="flag adj"><div class="ic">!</div><div>Creatinine is moving, so Cockcroft-Gault is unreliable — it lags behind a falling GFR. '+
+       'Dose for the kidney you think the patient has, not the number, and recheck tomorrow.</div></div>';
+  }
+  if(v!==null && v>=130 && S.rrt==='none'){
+    h+='<div class="flag info"><div class="ic">↑</div><div>Augmented renal clearance. Young, septic, trauma and burns patients under-dose easily — this is where treatment failure comes from, not toxicity.</div></div>';
+  }
+  if(d.wt && w){
+    h+='<div class="flag info"><div class="ic">⚖</div><div>Weight-based. This drug uses <b>'+r1(w)+' kg</b> — '+wtForBasis(d)+'.</div></div>';
+  }
+  if(S.cp!=='none'){
+    var bad=/avoid|reduce|halve|cap|caution|25 mg|35 mg/i.test(d.hep);
+    h+='<div class="flag '+(bad?'adj':'info')+'"><div class="ic">◈</div><div><b>Child-Pugh '+S.cp+'</b> — '+esc(d.hep)+
+       (bad&&v!==null&&v<50?'<br>Both kidney and liver are impaired. Two rules apply; take the stricter one.':'')+'</div></div>';
+  }
+  if(d.lvl){
+    h+='<div class="flag info"><div class="ic">🧪</div><div><b>Levels</b> — '+esc(d.lvl)+'</div></div>';
+  }
+
+  /* ---- the working ---- */
+  h+='<details'+(v!==null?'':' open')+'><summary>Show the working</summary><div class="work">'+working(d,v,w)+'</div></details>';
+
+  /* ---- the other routes ---- */
+  h+='<div class="card" style="margin-top:14px">'+kv('Dialysis',esc(d.ihd))+kv('CRRT',esc(d.crrt))+kv('Liver',esc(d.hep))+'</div>';
+
+  /* ---- ladder ---- */
+  if(d.bands.length>1){
+    h+='<h3>Full renal ladder</h3><div class="card ladder">';
+    var s=d.bands.slice().sort(function(a,b){return b[0]-a[0]});
+    var cur = v!==null&&S.rrt==='none' ? bandFor(d,v) : null;
+    for(var j=0;j<s.length;j++){
+      var lo=(j===s.length-1)?0:s[j+1][0];
+      var range = s[j][0]===999 ? 'above '+lo : (lo===0?'under '+s[j][0]:lo+'–'+s[j][0]);
+      h+='<div class="'+(cur===s[j]?'cur':'')+'"><span class="mono">CrCl '+range+'</span><span style="text-align:right">'+esc(s[j][1])+'</span></div>';
+    }
+    h+='</div>';
+  }
+
+  /* ---- notes ---- */
+  if(d.notes&&d.notes.length){
+    h+='<h3>Worth remembering</h3><div class="card">'+d.notes.map(function(n,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:'+classCol(d.c)+';flex:none">▸</span><span>'+esc(n)+'</span></div>';
+    }).join('')+'</div>';
+  }
+
+  /* ---- personal note ---- */
+  h+='<h3>Your note</h3><div class="card">'+
+     '<textarea id="note" placeholder="Brand you stock, vial size, what your unit actually does…">'+esc(NOTES[d.n]||'')+'</textarea>'+
+     '<button class="btn ghost" style="margin-top:9px" onclick="saveNote(\''+d.n.replace(/'/g,"\\'")+'\',this)">Save note</button></div>';
+
+  h+='<div class="disc">Check against your unit\'s antibiogram and the insert of the brand in your hand.</div>';
+
+  $('v-drug').innerHTML=h;
+  if(!keepScroll) window.scrollTo(0,0);
+}
+
+function working(d,v,w){
+  var out='';
+  var a=num('age'), c=crVal(), aw=num('wt'), i=ibw();
+  if(S.rrt!=='none'){
+    out+='<div class="step">Patient is on <b>'+S.rrt.toUpperCase()+'</b>, so the CrCl is set aside and the '+
+         (S.rrt==='ihd'?'dialysis':'CRRT')+' line is used instead.</div>';
+    return out;
+  }
+  if(v===null){
+    out+='<div class="step">Cockcroft-Gault needs age, weight, height and creatinine. Fill the patient bar and the whole page recalculates.</div>';
+    out+='<div class="step">CrCl = (140 − age) × weight × (0.85 if female) ÷ (72 × creatinine in mg/dL)</div>';
+    return out;
+  }
+  if(i) out+='<div class="step">Ideal weight = '+(S.sex==='M'?'50':'45.5')+' + 2.3 × ('+num('ht')+' cm in inches − 60) = <b>'+r1(i)+' kg</b></div>';
+  var cgw=dosingWt();
+  out+='<div class="step">Weight for Cockcroft-Gault = <b>'+r1(cgw)+' kg</b> ('+wtBasis()+')</div>';
+  out+='<div class="step">CrCl = (140 − '+a+') × '+r1(cgw)+(S.sex==='F'?' × 0.85':'')+' ÷ (72 × '+Math.round(c*100)/100+') = <b>'+v+' mL/min</b></div>';
+  var b=bandFor(d,v);
+  var s=d.bands.slice().sort(function(x,y){return x[0]-y[0]});
+  var idx=s.indexOf(b), lo = idx>0 ? s[idx-1][0] : 0;
+  var range = b[0]===999 ? 'above '+lo : (lo===0?'up to '+b[0]:lo+' to '+b[0]);
+  out+='<div class="step">CrCl '+v+' sits in the '+range+' band → <b>'+esc(b[1])+'</b></div>';
+  if(d.wt&&w){
+    out+='<div class="step">This drug is dosed on '+wtForBasis(d).split(' — ')[0]+' = <b>'+r1(w)+' kg</b></div>';
+    var m=b[1].match(/([\d.]+)\s*[–-]\s*([\d.]+)\s*mg\/kg/);
+    if(m) out+='<div class="step">'+m[1]+'–'+m[2]+' mg/kg × '+r1(w)+' kg = <b>'+r1(m[1]*w)+'–'+r1(m[2]*w)+' mg</b></div>';
+    else { var m2=b[1].match(/([\d.]+)\s*mg\/kg/);
+      if(m2) out+='<div class="step">'+m2[1]+' mg/kg × '+r1(w)+' kg = <b>'+r1(m2[1]*w)+' mg</b></div>'; }
+  }
+  if(d.load) out+='<div class="step">The loading dose above is deliberately <b>not</b> reduced — renal function changes how fast the drug leaves, not how much it takes to fill the patient.</div>';
+  return out;
+}
+
+function saveNote(name, btn){
+  var t=$('note').value.trim();
+  if(t) NOTES[name]=t; else delete NOTES[name];
+  save('notes', JSON.stringify(NOTES));
+  btn.textContent='Saved'; setTimeout(function(){btn.textContent='Save note'},1400);
+}
+
+/* ---------- calculators ---------- */
+function drawCalc(){
+  var v=crcl(), a=num('age'), c=crVal(), aw=num('wt'), i=ibw(), aj=adjbw(), w=dosingWt();
+  var h='';
+
+  h+='<div class="card"><div style="font-size:15.5px;font-weight:650;margin-bottom:4px">Creatinine clearance</div>'+
+     '<div class="rsub" style="margin-bottom:12px">Cockcroft-Gault. Every published renal band is derived from it, so eGFR is not interchangeable here.</div>';
+  if(v===null){
+    h+='<div class="empty" style="padding:14px 0">Needs age, weight, height and creatinine.</div>';
+  } else {
+    h+='<div style="font-size:38px;font-weight:700;letter-spacing:-.02em;color:'+crclCol(v)+'" class="mono">'+v+
+       '<span style="font-size:15px;color:var(--faint);font-weight:400"> mL/min · '+stage(v)+'</span></div>';
+    h+='<div class="work" style="margin-top:12px"><div class="step">(140 − '+a+') × '+r1(w)+' kg'+
+       (S.sex==='F'?' × 0.85':'')+' ÷ (72 × '+Math.round(c*100)/100+' mg/dL) = <b>'+v+'</b></div>'+
+       (v>=130?'<div class="step">Above 130 is augmented clearance — the risk here is under-dosing, not toxicity.</div>':'')+
+       ($('aki').checked?'<div class="step">You have flagged the creatinine as unstable, so treat this number as a rough guide only.</div>':'')+
+       '</div>';
+  }
+  h+='</div>';
+
+  h+='<div class="card"><div style="font-size:15.5px;font-weight:650;margin-bottom:4px">Body weight</div>'+
+     '<div class="rsub" style="margin-bottom:12px">Which weight a drug should use depends on how far the patient sits from ideal.</div>';
+  if(!aw){ h+='<div class="empty" style="padding:14px 0">Needs weight, and height for the ideal weight.</div>'; }
+  else{
+    h+='<div class="ladder">';
+    h+='<div><span>Actual</span><span class="mono">'+aw+' kg</span></div>';
+    if(i) h+='<div><span>Ideal (Devine)</span><span class="mono">'+r1(i)+' kg</span></div>';
+    if(aj&&i&&aw>i) h+='<div><span>Adjusted</span><span class="mono">'+r1(aj)+' kg</span></div>';
+    h+='<div class="cur"><span>Used for dosing</span><span class="mono">'+r1(w)+' kg</span></div>';
+    h+='</div>';
+    h+='<div class="work" style="margin-top:12px"><div class="step">'+wtBasis()+' — under ideal use actual, within 30% of ideal use ideal, over 30% use adjusted (ideal + 0.4 × excess).</div></div>';
+  }
+  h+='</div>';
+
+  h+='<h3>Coming later</h3><div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">'+
+     'mcg/kg/min ↔ mL/hr lands with the infusion engine in step 2. The steroid converter comes in step 4.</div>';
+  $('calcbody').innerHTML=h;
+}
+
+/* ---------- Child-Pugh ---------- */
+function cpPick(el){
+  var k=null;
+  for(var i=1;i<=5;i++) if(el.hasAttribute('data-cp'+i)) k=i;
+  document.querySelectorAll('[data-cp'+k+']').forEach(function(e){e.classList.remove('on')});
+  el.classList.add('on');
+  CP[k]=parseInt(el.getAttribute('data-cp'+k),10);
+  cpScore();
+}
+function cpScore(){
+  var t=CP[1]+CP[2]+CP[3]+CP[4]+CP[5];
+  var cls = t<=6?'A' : t<=9?'B' : 'C';
+  var col = cls==='A'?'var(--ok)' : cls==='B'?'var(--adj)' : 'var(--avoid)';
+  var line = cls==='A' ? 'Well compensated. Most drugs need no change.'
+           : cls==='B' ? 'Significant impairment. Reduce the hepatically cleared drugs and watch for accumulation.'
+           : 'Decompensated. Avoid what you can, halve what you must use, and never assume a printed number is precise here.';
+  $('cpout').innerHTML='<div class="hero" style="background:'+sigBg(cls==='A'?'ok':cls==='C'?'avoid':'adj')+';border-color:'+col+'">'+
+    '<div class="lbl" style="color:'+col+'">Child-Pugh</div>'+
+    '<div class="dose">Class '+cls+' · '+t+' points</div>'+
+    '<div class="note">'+line+'</div></div>'+
+    (S.cp===cls ? '<div class="flag info"><div class="ic">✓</div><div>The patient bar is already set to Child-Pugh '+cls+'.</div></div>'
+      : '<button class="btn" onclick="applyCP(\''+cls+'\')">Set the patient to Child-Pugh '+cls+'</button>');
+}
+function applyCP(cls){
+  S.cp=cls; setSeg('cp',cls); refresh(); cpScore();
+}
+
+/* ---------- my notes ---------- */
+function drawMine(){
+  var keys=Object.keys(NOTES);
+  if(!keys.length){
+    $('minebody').innerHTML='<div class="empty">No notes yet.<br>Open any drug, scroll to the bottom and write what your unit actually does.</div>';
+    return;
+  }
+  $('minebody').innerHTML=keys.map(function(k){
+    var idx=-1;
+    for(var i=0;i<DRUGS.length;i++) if(DRUGS[i].n===k) idx=i;
+    return '<div class="card">'+
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
+      '<div style="font-size:15.5px;font-weight:650">'+esc(k)+'</div>'+
+      (idx>=0?'<button class="rgo" style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--info);font-size:13px" onclick="nav(\'drug\','+idx+')">Open ›</button>':'')+
+      '</div><div style="font-size:14px;white-space:pre-wrap;color:var(--dim)">'+esc(NOTES[k])+'</div></div>';
+  }).join('')+
+  '<div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">Adding whole new drugs, and importing a CSV, arrives in step 3.</div>';
+}
+
+/* ---------- not-yet views ---------- */
+var SOON={
+  infusions:['Infusions','Step 2','Your own dilution goes in — noradrenaline 4, 8 or 16 mg in 50 mL, whatever your unit draws up — and the mL/hr comes back. Sedation, analgesia, muscle relaxants and vasopressors all run on the same engine.'],
+  formulary:['Formulary','Step 2','The everyday ICU drug list, tagged by system rather than split into tabs, so a drug that belongs in three places is still written once.'],
+  protocols:['Protocols','Step 3','Your unit protocols, written as steps with the cautions attached.'],
+  disease:['Disease-wise','Step 3','What to start, by site of infection — pneumonia, UTI, meningitis, intra-abdominal. Tap a drug on the card and it opens at this patient\'s dose.'],
+  theory:['Theory','Step 4','Bacteriology, mechanism-wise classes, spectrum grids and the steroid converter.']
+};
+function drawSoon(k){
+  var s=SOON[k]||['Not yet','','Coming in a later step.'];
+  $('v-soon').innerHTML='<button class="back" onclick="nav(\'home\')">‹ Dashboard</button>'+
+    '<h2>'+s[0]+'</h2><p class="lede">'+s[1]+'</p>'+
+    '<div class="card" style="font-size:14.5px;line-height:1.65;color:var(--dim)">'+s[2]+'</div>'+
+    '<div class="card" style="font-size:13.5px;color:var(--faint);line-height:1.6">Step 1 is deliberately narrow: patient, antibiotics, weights and Child-Pugh. '+
+    'Run it on a few rounds first — what annoys you there will change what gets built next.</div>';
+}
+
+/* ---------- boot ---------- */
+(function(){
+  try{ var n=read('notes'); if(n) NOTES=JSON.parse(n)||{} }catch(e){}
+  loadPatient();
+  ['age','wt','ht','cr'].forEach(function(id){ $(id).addEventListener('input',refresh) });
+  $('crunit').addEventListener('change',refresh);
+  $('aki').addEventListener('change',refresh);
+  $('ver').textContent=APP_VERSION+' · data '+DRUG_VERSION;
+  drawTiles(); refresh(); route();
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){ navigator.serviceWorker.register('sw.js').catch(function(){}) });
+  }
+})();
+</script>
+</body>
+</html>
