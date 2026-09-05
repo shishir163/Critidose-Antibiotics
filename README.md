@@ -1,10 +1,14 @@
-# CritiDose — ধাপ ১
+# CritiDose — ধাপ ২
 
 Right drug, right dose, right patient — even at 3 AM.
 
-ধাপ ১-এ যা আছে: patient bar, ৪৫টা অ্যান্টিবায়োটিক (renal ladder, dialysis, CRRT, liver, level),
+**ধাপ ১** — patient bar, ৪৫টা অ্যান্টিবায়োটিক (renal ladder, dialysis, CRRT, liver, level),
 CrCl · IBW · AdjBW, Child-Pugh, alias সহ সার্চ, ৯টা টাইলের ড্যাশবোর্ড।
-বাকি আটটা টাইল খোলে, ভেতরে কোন ধাপে কী আসছে লেখা আছে।
+
+**ধাপ ২** — ৩১টা infusion (নিজের dilution বসিয়ে mL/hr, দুদিকেই কাজ করে),
+১৫০টা ওষুধের system-tagged formulary, আর আলাদা dose ↔ mL/hr converter।
+
+বাকি চারটে টাইল খোলে, ভেতরে কোন ধাপে কী আসছে লেখা আছে।
 
 ---
 
@@ -12,7 +16,9 @@ CrCl · IBW · AdjBW, Child-Pugh, alias সহ সার্চ, ৯টা টা
 
 ```
 index.html                 অ্যাপ — UI আর হিসাব
-data/antibiotics.js        শুধু ডেটা — ডোজ বদলাতে হলে এই একটাই ফাইল বদলাবে
+data/antibiotics.js        অ্যান্টিবায়োটিক — ডোজ বদলাতে হলে এই ফাইল
+data/infusions.js          infusion — dilution ডিফল্ট আর রেঞ্জ
+data/formulary.js          ১৫০টা ওষুধ, system ট্যাগসহ
 manifest.webmanifest       হোম স্ক্রিনে বসার তথ্য
 sw.js                      নেট ছাড়া চালানোর জন্য
 icons/                     আইকন
@@ -47,7 +53,7 @@ GitHub-এ ফাইল বদলালে পরেরবার নেট থ�
 
 ## আপনার লেখা
 
-Patient-এর তথ্য আর প্রতিটা ড্রাগে আপনার নিজের নোট ফোনেই থাকে, সার্ভারে যায় না।
+Patient-এর তথ্য, প্রতিটা ড্রাগের নোট, আর আপনার সেভ করা dilution — সবই ফোনেই থাকে, সার্ভারে যায় না।
 অ্যাপ আপডেট হলেও মোছে না। ব্রাউজারের ডেটা মুছে ফেললে যাবে —
 Export/Restore ধাপ ৪-এ আসছে।
 

@@ -248,6 +248,34 @@ details[open]>summary::before{content:'▾ '}
 
 <section id="v-drug" class="hide"></section>
 
+<!-- ============ INFUSIONS ============ -->
+<section id="v-inf" class="hide">
+  <h2>Infusions</h2>
+  <p class="lede" id="infsub">Set your own dilution once. The mL/hr follows it from then on.</p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qi" type="search" placeholder="Noradrenaline, propofol, insulin…" oninput="drawInf()">
+  </div>
+  <div class="chips" id="chips-ig"></div>
+  <div id="infrows"></div>
+</section>
+
+<section id="v-infdrug" class="hide"></section>
+
+<!-- ============ FORMULARY ============ -->
+<section id="v-frm" class="hide">
+  <h2>Formulary</h2>
+  <p class="lede" id="frmsub"></p>
+  <div class="searchbar">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#93A6B6" stroke-width="1.8">
+      <circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5L14 14"/></svg>
+    <input id="qf" type="search" placeholder="Renvela, Cotson, spironolactone…" oninput="drawFrm()">
+  </div>
+  <div class="chips" id="chips-sys"></div>
+  <div id="frmrows"></div>
+</section>
+
 <!-- ============ CALCULATORS ============ -->
 <section id="v-calc" class="hide">
   <h2>Calculators</h2>
@@ -302,13 +330,17 @@ details[open]>summary::before{content:'▾ '}
 </div>
 
 <script src="data/antibiotics.js"></script>
+<script src="data/infusions.js"></script>
+<script src="data/formulary.js"></script>
 <script>
 /* ============================================================
    CritiDose — app logic
    ============================================================ */
-var APP_VERSION = '1.0 · step 1';
+var APP_VERSION = '2.0 · step 2';
 
-var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null};
+var S = {sex:'M', rrt:'none', cp:'none', view:'home', cls:'all', tag:'', drug:null,
+         ig:'all', sys:'', inf:null, iwt:'actual'};
+var DIL = {};
 var NOTES = {};
 var CP = {1:1,2:1,3:1,4:1,5:1};
 
@@ -440,6 +472,8 @@ function refresh(){
   if(S.view==='abx') drawList();
   if(S.view==='drug') showDrug(S.drug,true);
   if(S.view==='calc') drawCalc();
+  if(S.view==='infdrug') showInf(S.inf,true);
+  if(S.view==='inf') drawInf();
   if(S.view==='home') homeSub();
 }
 function savePatient(){
@@ -474,7 +508,7 @@ function clearPatient(){
 function openPatient(){ nav('patient') }
 
 /* ---------- routing ---------- */
-var VIEWS=['home','patient','abx','drug','calc','scores','mine','soon'];
+var VIEWS=['home','patient','abx','drug','inf','infdrug','frm','calc','scores','mine','soon'];
 function nav(v,arg){
   var h = v==='drug' ? '#drug/'+arg : (v==='soon' ? '#soon/'+arg : '#'+v);
   if(location.hash!==h) location.hash=h; else route();
@@ -489,6 +523,9 @@ function route(){
   if(v==='home'){ homeSub() }
   if(v==='abx'){ drawChips(); drawList() }
   if(v==='drug'){ showDrug(parseInt(arg,10)) }
+  if(v==='inf'){ drawIGroups(); drawInf() }
+  if(v==='infdrug'){ showInf(parseInt(arg,10)) }
+  if(v==='frm'){ drawSystems(); drawFrm() }
   if(v==='calc'){ drawCalc() }
   if(v==='mine'){ drawMine() }
   if(v==='soon'){ drawSoon(arg) }
@@ -501,9 +538,9 @@ window.addEventListener('hashchange',route);
 var TILES=[
   ['Antibiotics','#2DD4BF','Renal, liver and RRT dosing','abx','ready',
    '<path d="M4 13.5 13.5 4a5 5 0 0 1 7 7L11 20.5a5 5 0 0 1-7-7Z"/><path d="M8.5 8.5 16 16"/>'],
-  ['Infusions','#F472B6','mL/hr from your own dilution','infusions','step 2',
+  ['Infusions','#F472B6','mL/hr from your own dilution','inf','ready',
    '<path d="M12 3v6M9 9h6l1 9a3 3 0 0 1-3 3h-2a3 3 0 0 1-3-3l1-9Z"/><path d="M8.6 15h6.8"/>'],
-  ['Formulary','#60A5FA','The everyday ICU drug list','formulary','step 2',
+  ['Formulary','#60A5FA','The everyday ICU drug list','frm','ready',
    '<path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2V4Z"/><path d="M5 16h13"/>'],
   ['Protocols','#FBBF24','Unit protocols, step by step','protocols','step 3',
    '<path d="M8 4h8v3H8zM6 7h12v13H6z"/><path d="M9.5 12h5M9.5 16h5"/>'],
@@ -583,7 +620,7 @@ function drawList(){
       '<div class="bar" style="background:'+classCol(d.c)+'"></div>'+
       '<div style="min-width:0"><div class="rname">'+dot+esc(d.n)+
       (d.lvl?'<span class="lab">LEVEL</span>':'')+
-      (NOTES[d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      (NOTES['abx:'+d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
       '<div class="rsub">'+esc(d.tag)+'</div></div>'+
       '<div class="rgo">›</div></div>';
   }).join('') : '<div class="empty">Nothing matches that.<br>Try the generic name, or clear the filters above.</div>';
@@ -680,8 +717,7 @@ function showDrug(i,keepScroll){
 
   /* ---- personal note ---- */
   h+='<h3>Your note</h3><div class="card">'+
-     '<textarea id="note" placeholder="Brand you stock, vial size, what your unit actually does…">'+esc(NOTES[d.n]||'')+'</textarea>'+
-     '<button class="btn ghost" style="margin-top:9px" onclick="saveNote(\''+d.n.replace(/'/g,"\\'")+'\',this)">Save note</button></div>';
+     noteBox('abx:'+d.n)+'</div>';
 
   h+='<div class="disc">Check against your unit\'s antibiogram and the insert of the brand in your hand.</div>';
 
@@ -722,9 +758,9 @@ function working(d,v,w){
   return out;
 }
 
-function saveNote(name, btn){
-  var t=$('note').value.trim();
-  if(t) NOTES[name]=t; else delete NOTES[name];
+function saveNote(key, id, btn){
+  var t=$(id).value.trim();
+  if(t) NOTES[key]=t; else delete NOTES[key];
   save('notes', JSON.stringify(NOTES));
   btn.textContent='Saved'; setTimeout(function(){btn.textContent='Save note'},1400);
 }
@@ -763,9 +799,23 @@ function drawCalc(){
   }
   h+='</div>';
 
+  h+='<div class="card"><div style="font-size:15.5px;font-weight:650;margin-bottom:4px">Dose ↔ pump rate</div>'+
+     '<div class="rsub" style="margin-bottom:12px">For a drug that is not in the infusion list, or a dilution you have made up on the spot.</div>'+
+     '<div class="grid3" style="margin-bottom:10px">'+
+     '<div><label for="c_amt">Amount (mg)</label><input id="c_amt" type="number" inputmode="decimal" value="'+CALC.amt+'" oninput="calcRate()"></div>'+
+     '<div><label for="c_vol">In (mL)</label><input id="c_vol" type="number" inputmode="decimal" value="'+CALC.vol+'" oninput="calcRate()"></div>'+
+     '<div><label for="c_unit">Unit</label><select id="c_unit" onchange="CALC.unit=this.value;calcRate()">'+
+       ['mcg/kg/min','mcg/kg/hr','mcg/min','mcg/hr','mg/kg/hr','mg/hr'].map(function(u){
+         return '<option value="'+u+'"'+(CALC.unit===u?' selected':'')+'>'+u+'</option>' }).join('')+
+     '</select></div></div>'+
+     '<div class="grid2"><div><label for="c_dose">Dose</label><input id="c_dose" type="number" inputmode="decimal" value="'+CALC.dose+'" oninput="calcRate()"></div>'+
+     '<div><label for="c_out">mL/hr</label><input id="c_out" type="number" inputmode="decimal" oninput="calcDose()"></div></div>'+
+     '<div class="work" style="margin-top:12px" id="c_work"></div></div>';
+
   h+='<h3>Coming later</h3><div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">'+
-     'mcg/kg/min ↔ mL/hr lands with the infusion engine in step 2. The steroid converter comes in step 4.</div>';
+     'The steroid equivalence converter arrives in step 4.</div>';
   $('calcbody').innerHTML=h;
+  calcRate();
 }
 
 /* ---------- Child-Pugh ---------- */
@@ -795,6 +845,329 @@ function applyCP(cls){
   S.cp=cls; setSeg('cp',cls); refresh(); cpScore();
 }
 
+
+/* ---------- shared note box ---------- */
+function noteBox(key){
+  var id='nb_'+Math.abs(hashCode(key));
+  return '<textarea id="'+id+'" placeholder="Brand you stock, vial size, what your unit actually does…">'+
+    esc(NOTES[key]||'')+'</textarea>'+
+    '<button class="btn ghost" style="margin-top:9px" onclick="saveNote(\''+key.replace(/'/g,"\\'")+'\',\''+id+'\',this)">Save note</button>';
+}
+function hashCode(str){ var h=0,i; for(i=0;i<str.length;i++){ h=((h<<5)-h)+str.charCodeAt(i); h|=0 } return h }
+
+/* ============================================================
+   INFUSIONS
+   ============================================================ */
+function igroupCol(k){ for(var i=0;i<IGROUPS.length;i++) if(IGROUPS[i][0]===k) return IGROUPS[i][2]; return '#94A3B8' }
+function igroupName(k){ for(var i=0;i<IGROUPS.length;i++) if(IGROUPS[i][0]===k) return IGROUPS[i][1]; return k }
+
+/* the family the dose unit is counted in */
+function baseFam(unit){ return unit.indexOf('units')>-1 ? 'units' : unit.indexOf('mcg')>-1 ? 'mcg' : 'mg' }
+function toBase(amt, au, fam){
+  if(au===fam) return amt;
+  if(au==='mg' && fam==='mcg') return amt*1000;
+  if(au==='mcg' && fam==='mg') return amt/1000;
+  return amt;
+}
+function dilOf(d){
+  var saved=DIL[d.n];
+  return { amt: saved&&saved.amt!=null ? saved.amt : d.amt,
+           vol: saved&&saved.vol!=null ? saved.vol : d.vol };
+}
+function setDil(name, amt, vol){
+  DIL[name]={amt:amt, vol:vol};
+  save('dilutions', JSON.stringify(DIL));
+}
+function concOf(d){                       /* base units per mL */
+  var x=dilOf(d);
+  return toBase(x.amt, d.au, baseFam(d.unit)) / x.vol;
+}
+function infWeight(){
+  var a=num('wt'), i=ibw();
+  if(!a) return null;
+  if(S.iwt==='ideal') return i||a;
+  if(S.iwt==='adjusted') return adjbw()||a;
+  return a;
+}
+function needsWeight(d){ return d.unit.indexOf('/kg')>-1 }
+function perHourFrom(d, dose){            /* dose in the drug's unit -> base units per hour */
+  var w=infWeight(), x=dose;
+  if(needsWeight(d)){ if(!w) return null; x*=w }
+  if(d.unit.indexOf('/min')>-1) x*=60;
+  return x;
+}
+function rateFrom(d, dose){
+  var ph=perHourFrom(d,dose); if(ph===null) return null;
+  var c=concOf(d); if(!c) return null;
+  return ph/c;
+}
+function doseFrom(d, rate){
+  var c=concOf(d), w=infWeight();
+  var ph=rate*c;
+  if(d.unit.indexOf('/min')>-1) ph/=60;
+  if(needsWeight(d)){ if(!w) return null; ph/=w }
+  return ph;
+}
+function fmtNum(x){
+  if(x===null||!isFinite(x)) return '—';
+  if(x>=100) return String(Math.round(x));
+  if(x>=10)  return String(Math.round(x*10)/10);
+  if(x>=1)   return String(Math.round(x*100)/100);
+  return String(Math.round(x*1000)/1000);
+}
+
+function drawIGroups(){
+  var g=[['all','All']].concat(IGROUPS.map(function(x){return [x[0],x[1]]}));
+  $('chips-ig').innerHTML=g.map(function(c){
+    var col=c[0]==='all'?'#60A5FA':igroupCol(c[0]);
+    var on=S.ig===c[0];
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.ig=\''+c[0]+'\';drawIGroups();drawInf()">'+c[1]+'</div>';
+  }).join('');
+}
+function drawInf(){
+  var q=($('qi').value||'').toLowerCase().trim();
+  var list=[], w=infWeight();
+  for(var i=0;i<INFUSIONS.length;i++){
+    var d=INFUSIONS[i];
+    if(S.ig!=='all' && d.k!==S.ig) continue;
+    if(q && (d.n+' '+(d.al||'')).toLowerCase().indexOf(q)<0) continue;
+    list.push([d,i]);
+  }
+  $('infsub').textContent = w ? ('Rates are for '+r1(w)+' kg — '+S.iwt+' weight.')
+    : 'Add a weight on the patient bar and the per-kilogram drugs will calculate.';
+  $('infrows').innerHTML = list.length ? list.map(function(p){
+    var d=p[0], i=p[1];
+    var mid=(d.lo+d.hi)/2, rate=rateFrom(d,mid);
+    var sub = d.lo+'–'+d.hi+' '+d.unit + (rate!==null ? '   ·   '+fmtNum(rate)+' mL/hr at mid-range' : '');
+    return '<div class="row" onclick="nav(\'infdrug\','+i+')" role="button" tabindex="0">'+
+      '<div class="bar" style="background:'+igroupCol(d.k)+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(d.n)+
+      (DIL[d.n]?'<span class="lab" style="color:var(--ok)">MINE</span>':'')+
+      (NOTES['inf:'+d.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      '<div class="rsub">'+esc(sub)+'</div></div><div class="rgo">›</div></div>';
+  }).join('') : '<div class="empty">Nothing matches that.</div>';
+}
+
+function showInf(i, keep){
+  if(isNaN(i)||!INFUSIONS[i]){ nav('inf'); return }
+  S.inf=i;
+  var d=INFUSIONS[i], col=igroupCol(d.k), x=dilOf(d), w=infWeight(), h='';
+  var fam=baseFam(d.unit), conc=concOf(d);
+
+  h+='<button class="back" onclick="nav(\'inf\')">‹ All infusions</button>';
+  h+='<div style="display:flex;align-items:center;gap:11px;margin:6px 0 12px">'+
+     '<div class="bar" style="background:'+col+';height:30px"></div>'+
+     '<div><div style="font-size:21px;font-weight:650;letter-spacing:-.015em">'+esc(d.n)+'</div>'+
+     '<div class="rsub">'+igroupName(d.k)+'   ·   usual '+d.lo+'–'+d.hi+' '+d.unit+'</div></div></div>';
+
+  /* --- the syringe --- */
+  h+='<div class="card"><label>What is in the syringe</label>'+
+     '<div class="grid2" style="margin-bottom:10px">'+
+     '<div><label for="i_amt">'+d.au+'</label><input id="i_amt" type="number" inputmode="decimal" value="'+x.amt+'" oninput="onDil()"></div>'+
+     '<div><label for="i_vol">mL</label><input id="i_vol" type="number" inputmode="decimal" value="'+x.vol+'" oninput="onDil()"></div>'+
+     '</div>';
+  if(d.pre&&d.pre.length){
+    h+='<div class="chips" style="padding-bottom:6px">'+d.pre.map(function(a){
+      return '<div class="chip" style="'+(a==x.amt?'border-color:'+col+';color:'+col:'')+'" onclick="setAmt('+a+')">'+a+' '+d.au+'</div>';
+    }).join('')+'</div>';
+  }
+  if(d.pvol&&d.pvol.length){
+    h+='<div class="chips" style="padding-bottom:6px">'+d.pvol.map(function(a){
+      return '<div class="chip" style="'+(a==x.vol?'border-color:'+col+';color:'+col:'')+'" onclick="setVol('+a+')">'+a+' mL</div>';
+    }).join('')+'</div>';
+  }
+  h+='<div style="font-size:13px;color:var(--dim)" class="mono" id="i_conc"></div>'+
+     '<div style="font-size:11.5px;color:var(--faint);margin-top:6px">Whatever you set here is remembered for this drug.</div></div>';
+
+  /* --- weight basis --- */
+  if(needsWeight(d)){
+    h+='<div class="card"><label>Weight used</label><div class="segs">'+
+       ['actual','ideal','adjusted'].map(function(k){
+         return '<div class="seg'+(S.iwt===k?' on':'')+'" onclick="setIwt(\''+k+'\')">'+k.charAt(0).toUpperCase()+k.slice(1)+'</div>';
+       }).join('')+'</div>'+
+       '<div style="font-size:12px;color:var(--faint);margin-top:9px">'+
+       (w?'Using <b>'+r1(w)+' kg</b>. ':'No weight on the patient bar yet. ')+
+       'Vasopressors are conventionally run on actual weight; for propofol and the relaxants in obesity many units use ideal or adjusted.</div></div>';
+  }
+
+  /* --- the two-way box --- */
+  h+='<div class="card"><label>Dose and rate — change either one</label>'+
+     '<div class="grid2" style="margin-bottom:10px">'+
+     '<div><label for="i_dose">'+d.unit+'</label><input id="i_dose" type="number" inputmode="decimal" oninput="fromDose()"></div>'+
+     '<div><label for="i_rate">mL/hr</label><input id="i_rate" type="number" inputmode="decimal" oninput="fromRate()"></div>'+
+     '</div><div class="chips">'+
+     [d.lo, Math.round(((d.lo+d.hi)/2)*1000)/1000, d.hi].map(function(v){
+       return '<div class="chip" onclick="setDose('+v+')">'+v+' '+d.unit+'</div>';
+     }).join('')+'</div></div>';
+
+  h+='<div class="hero" id="i_hero" style="background:rgba(96,165,250,.09);border-color:'+col+'">'+
+     '<div class="lbl" style="color:'+col+'">Pump rate</div><div class="dose" id="i_out">—</div>'+
+     '<div class="note" id="i_note">Type a dose above, or a rate, and the other side follows.</div></div>';
+
+  h+='<details><summary>Show the working</summary><div class="work" id="i_work"></div></details>';
+
+  if(d.bolus) h+='<div class="load"><div class="lbl">Bolus or load</div><div class="val" style="font-size:16px">'+esc(d.bolus)+'</div></div>';
+  if(d.max)   h+='<div class="flag adj"><div class="ic">!</div><div>'+esc(d.max)+'</div></div>';
+
+  /* renal and liver read the patient bar */
+  var v=crcl();
+  if((v!==null&&v<50)||S.rrt!=='none') h+='<div class="flag info"><div class="ic">◇</div><div><b>Renal</b> — '+esc(d.renal)+'</div></div>';
+  if(S.cp!=='none') h+='<div class="flag info"><div class="ic">◈</div><div><b>Child-Pugh '+S.cp+'</b> — '+esc(d.hep)+'</div></div>';
+
+  h+='<div class="card">'+kv('Renal',esc(d.renal))+kv('Liver',esc(d.hep))+'</div>';
+
+  if(d.notes&&d.notes.length){
+    h+='<h3>Worth remembering</h3><div class="card">'+d.notes.map(function(n,ix){
+      return '<div style="display:flex;gap:10px;padding:9px 0;'+(ix?'border-top:1px solid var(--line)':'')+';font-size:14px">'+
+        '<span style="color:'+col+';flex:none">▸</span><span>'+esc(n)+'</span></div>';
+    }).join('')+'</div>';
+  }
+  h+='<h3>Your note</h3><div class="card">'+noteBox('inf:'+d.n)+'</div>';
+  h+='<div class="disc">The concentration in the box is the one you set. Check it against the label on the syringe before you trust the number.</div>';
+
+  $('v-infdrug').innerHTML=h;
+  setDose((d.lo+d.hi)/2, true);
+  if(!keep) window.scrollTo(0,0);
+}
+function onDil(){
+  var d=INFUSIONS[S.inf];
+  var a=parseFloat($('i_amt').value), v=parseFloat($('i_vol').value);
+  if(isFinite(a)&&a>0&&isFinite(v)&&v>0) setDil(d.n,a,v);
+  fromDose();
+}
+function setAmt(a){ $('i_amt').value=a; onDil(); showInf(S.inf,true) }
+function setVol(v){ $('i_vol').value=v; onDil(); showInf(S.inf,true) }
+function setIwt(k){ S.iwt=k; save('iwt',k); showInf(S.inf,true) }
+function setDose(v, quiet){ $('i_dose').value=Math.round(v*1000)/1000; fromDose(quiet) }
+function fromDose(){
+  var d=INFUSIONS[S.inf], dose=parseFloat($('i_dose').value);
+  if(!isFinite(dose)){ paintInf(null,null); return }
+  var rate=rateFrom(d,dose);
+  $('i_rate').value = rate===null ? '' : Math.round(rate*100)/100;
+  paintInf(dose,rate);
+}
+function fromRate(){
+  var d=INFUSIONS[S.inf], rate=parseFloat($('i_rate').value);
+  if(!isFinite(rate)){ paintInf(null,null); return }
+  var dose=doseFrom(d,rate);
+  $('i_dose').value = dose===null ? '' : Math.round(dose*1000)/1000;
+  paintInf(dose,rate);
+}
+function paintInf(dose,rate){
+  var d=INFUSIONS[S.inf], fam=baseFam(d.unit), c=concOf(d), x=dilOf(d), w=infWeight();
+  $('i_conc').innerHTML = x.amt+' '+d.au+' in '+x.vol+' mL  =  <b>'+fmtNum(c)+' '+fam+'/mL</b>';
+  var out=$('i_out'), note=$('i_note'), hero=$('i_hero');
+  if(rate===null||!isFinite(rate)){
+    out.textContent='—';
+    note.textContent = needsWeight(d)&&!w ? 'This drug is dosed per kilogram. Put a weight on the patient bar.'
+      : 'Type a dose above, or a rate, and the other side follows.';
+    hero.style.borderColor=igroupCol(d.k);
+  } else {
+    out.textContent=fmtNum(rate)+' mL/hr';
+    var over = dose>d.hi, under = dose<d.lo;
+    note.textContent = over ? 'Above the usual range ('+d.lo+'–'+d.hi+' '+d.unit+'). Deliberate, or a decimal in the wrong place?'
+      : under ? 'Below the usual range ('+d.lo+'–'+d.hi+' '+d.unit+').'
+      : 'Within the usual range.';
+    hero.style.borderColor = over ? 'var(--adj)' : igroupCol(d.k);
+  }
+  var wk='';
+  wk+='<div class="step">Concentration = '+x.amt+' '+d.au+' ÷ '+x.vol+' mL = <b>'+fmtNum(c)+' '+fam+'/mL</b></div>';
+  if(dose!==null&&isFinite(dose)){
+    var perHr=perHourFrom(d,dose);
+    if(needsWeight(d)&&w) wk+='<div class="step">'+fmtNum(dose)+' '+d.unit+' × '+r1(w)+' kg'+
+      (d.unit.indexOf('/min')>-1?' × 60 min':'')+' = <b>'+fmtNum(perHr)+' '+fam+'/hr</b></div>';
+    else if(d.unit.indexOf('/min')>-1) wk+='<div class="step">'+fmtNum(dose)+' '+d.unit+' × 60 min = <b>'+fmtNum(perHr)+' '+fam+'/hr</b></div>';
+    else wk+='<div class="step">'+fmtNum(dose)+' '+d.unit+' = <b>'+fmtNum(perHr)+' '+fam+'/hr</b></div>';
+    if(perHr!==null) wk+='<div class="step">'+fmtNum(perHr)+' '+fam+'/hr ÷ '+fmtNum(c)+' '+fam+'/mL = <b>'+fmtNum(rate)+' mL/hr</b></div>';
+  }
+  if($('i_work')) $('i_work').innerHTML=wk;
+}
+
+/* ============================================================
+   FORMULARY
+   ============================================================ */
+function sysCol(k){ for(var i=0;i<SYSTEMS.length;i++) if(SYSTEMS[i][0]===k) return SYSTEMS[i][2]; return '#94A3B8' }
+function sysName(k){ for(var i=0;i<SYSTEMS.length;i++) if(SYSTEMS[i][0]===k) return SYSTEMS[i][1]; return k }
+function drawSystems(){
+  var g=[['all','All']].concat(SYSTEMS.map(function(x){return [x[0],x[1]]}));
+  $('chips-sys').innerHTML=g.map(function(c){
+    var on=(S.sys||'all')===c[0];
+    var col=c[0]==='all'?'#60A5FA':sysCol(c[0]);
+    return '<div class="chip" style="'+(on?'background:'+col+';border-color:'+col+';color:#06131C;font-weight:650':'')+
+      '" onclick="S.sys=\''+(c[0]==='all'?'':c[0])+'\';drawSystems();drawFrm()">'+c[1]+'</div>';
+  }).join('');
+}
+var FOPEN=-1;
+function drawFrm(){
+  var q=($('qf').value||'').toLowerCase().trim();
+  var list=[];
+  for(var i=0;i<FORMULARY.length;i++){
+    var f=FORMULARY[i];
+    if(S.sys && f.s.indexOf(S.sys)<0) continue;
+    if(q && (f.n+' '+(f.al||'')+' '+f.d).toLowerCase().indexOf(q)<0) continue;
+    list.push([f,i]);
+  }
+  $('frmsub').textContent=list.length+' of '+FORMULARY.length+' drugs · tap one to open it';
+  $('frmrows').innerHTML = list.length ? list.map(function(p){
+    var f=p[0], i=p[1], open=FOPEN===i;
+    var h='<div class="card" style="padding:0;overflow:hidden">'+
+      '<div style="display:flex;gap:11px;padding:12px;cursor:pointer" onclick="FOPEN=(FOPEN==='+i+'?-1:'+i+');drawFrm()">'+
+      '<div class="bar" style="background:'+sysCol(f.s[0])+'"></div>'+
+      '<div style="min-width:0"><div class="rname">'+esc(f.n)+
+      (NOTES['frm:'+f.n]?'<span class="lab" style="color:var(--info)">NOTE</span>':'')+'</div>'+
+      '<div class="rsub" style="white-space:normal">'+esc(f.d)+'</div></div>'+
+      '<div class="rgo">'+(open?'▾':'›')+'</div></div>';
+    if(open){
+      h+='<div style="padding:0 12px 12px">';
+      h+='<div class="tagline" style="margin:2px 0 10px">'+f.s.map(function(t){
+           return '<span class="tg" style="border-color:'+sysCol(t)+'55;color:'+sysCol(t)+'">'+sysName(t)+'</span>' }).join('')+'</div>';
+      if(f.al) h+='<div style="font-size:12.5px;color:var(--faint);margin-bottom:10px">Also called '+esc(f.al.split(' ').join(', '))+'</div>';
+      if(f.note) h+='<div class="flag info" style="margin-bottom:10px"><div class="ic">▸</div><div>'+esc(f.note)+'</div></div>';
+      h+=noteBox('frm:'+f.n);
+      h+='</div>';
+    }
+    return h+'</div>';
+  }).join('') : '<div class="empty">Nothing matches that.<br>Tell me what is missing and it goes in the data file.</div>';
+}
+
+
+/* ---------- standalone dose/rate converter ---------- */
+var CALC={amt:4, vol:50, unit:'mcg/kg/min', dose:0.1};
+function calcPseudo(){
+  CALC.amt=parseFloat($('c_amt').value); CALC.vol=parseFloat($('c_vol').value);
+  return {unit:CALC.unit, au:'mg', amt:CALC.amt, vol:CALC.vol, n:'__calc'};
+}
+function calcRate(){
+  var d=calcPseudo(), dose=parseFloat($('c_dose').value);
+  CALC.dose=dose;
+  var w=infWeight(), fam=baseFam(d.unit);
+  var ok=isFinite(d.amt)&&d.amt>0&&isFinite(d.vol)&&d.vol>0&&isFinite(dose);
+  var rate = ok ? rateFrom(d,dose) : null;
+  if($('c_out')) $('c_out').value = rate===null||!isFinite(rate) ? '' : Math.round(rate*100)/100;
+  paintCalcWork(d,dose,rate,w,fam);
+}
+function calcDose(){
+  var d=calcPseudo(), rate=parseFloat($('c_out').value);
+  var dose = isFinite(rate) ? doseFrom(d,rate) : null;
+  if($('c_dose')) $('c_dose').value = dose===null||!isFinite(dose) ? '' : Math.round(dose*1000)/1000;
+  CALC.dose=dose;
+  paintCalcWork(d,dose,rate,infWeight(),baseFam(d.unit));
+}
+function paintCalcWork(d,dose,rate,w,fam){
+  var el=$('c_work'); if(!el) return;
+  if(needsWeight(d)&&!w){ el.innerHTML='<div class="step">This unit is per kilogram. Put a weight on the patient bar.</div>'; return }
+  var c=concOf(d);
+  var h='<div class="step">'+(isFinite(d.amt)?d.amt:'—')+' mg ÷ '+(isFinite(d.vol)?d.vol:'—')+' mL = <b>'+fmtNum(c)+' '+fam+'/mL</b></div>';
+  if(isFinite(dose)&&isFinite(rate)){
+    var ph=perHourFrom(d,dose);
+    h+='<div class="step">'+fmtNum(dose)+' '+d.unit+(needsWeight(d)?' × '+r1(w)+' kg':'')+
+       (d.unit.indexOf('/min')>-1?' × 60 min':'')+' = <b>'+fmtNum(ph)+' '+fam+'/hr</b></div>';
+    h+='<div class="step">÷ '+fmtNum(c)+' '+fam+'/mL = <b>'+fmtNum(rate)+' mL/hr</b></div>';
+  }
+  el.innerHTML=h;
+}
+
 /* ---------- my notes ---------- */
 function drawMine(){
   var keys=Object.keys(NOTES);
@@ -802,22 +1175,44 @@ function drawMine(){
     $('minebody').innerHTML='<div class="empty">No notes yet.<br>Open any drug, scroll to the bottom and write what your unit actually does.</div>';
     return;
   }
-  $('minebody').innerHTML=keys.map(function(k){
-    var idx=-1;
-    for(var i=0;i<DRUGS.length;i++) if(DRUGS[i].n===k) idx=i;
-    return '<div class="card">'+
-      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
-      '<div style="font-size:15.5px;font-weight:650">'+esc(k)+'</div>'+
-      (idx>=0?'<button class="rgo" style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--info);font-size:13px" onclick="nav(\'drug\','+idx+')">Open ›</button>':'')+
-      '</div><div style="font-size:14px;white-space:pre-wrap;color:var(--dim)">'+esc(NOTES[k])+'</div></div>';
-  }).join('')+
-  '<div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">Adding whole new drugs, and importing a CSV, arrives in step 3.</div>';
+  var LABEL={abx:['Antibiotics','abx'], inf:['Infusions','inf'], frm:['Formulary','frm']};
+  var groups={abx:[],inf:[],frm:[]};
+  keys.forEach(function(k){
+    var pre=k.indexOf(':')>-1?k.split(':')[0]:'abx';
+    var name=k.indexOf(':')>-1?k.slice(k.indexOf(':')+1):k;
+    if(!groups[pre]) groups[pre]=[];
+    groups[pre].push([name,NOTES[k]]);
+  });
+  var h='';
+  ['abx','inf','frm'].forEach(function(pre){
+    if(!groups[pre].length) return;
+    h+='<h3>'+LABEL[pre][0]+'</h3>';
+    h+=groups[pre].map(function(pair){
+      var name=pair[0], txt=pair[1], idx=-1, go='';
+      if(pre==='abx'){ for(var i=0;i<DRUGS.length;i++) if(DRUGS[i].n===name) idx=i; if(idx>=0) go="nav('drug',"+idx+")" }
+      if(pre==='inf'){ for(var j=0;j<INFUSIONS.length;j++) if(INFUSIONS[j].n===name) idx=j; if(idx>=0) go="nav('infdrug',"+idx+")" }
+      if(pre==='frm'){ for(var m=0;m<FORMULARY.length;m++) if(FORMULARY[m].n===name) idx=m; if(idx>=0) go="FOPEN="+idx+";nav('frm')" }
+      return '<div class="card">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'+
+        '<div style="font-size:15.5px;font-weight:650">'+esc(name)+'</div>'+
+        (go?'<button style="margin-left:auto;background:none;border:0;cursor:pointer;color:var(--info);font-size:13px" onclick="'+go+'">Open ›</button>':'')+
+        '</div><div style="font-size:14px;white-space:pre-wrap;color:var(--dim)">'+esc(txt)+'</div></div>';
+    }).join('');
+  });
+  var dils=Object.keys(DIL);
+  if(dils.length){
+    h+='<h3>My dilutions</h3><div class="card ladder">'+dils.map(function(n){
+      var idx=-1; for(var i=0;i<INFUSIONS.length;i++) if(INFUSIONS[i].n===n) idx=i;
+      var au=idx>=0?INFUSIONS[idx].au:'';
+      return '<div><span>'+esc(n)+'</span><span class="mono">'+DIL[n].amt+' '+au+' in '+DIL[n].vol+' mL</span></div>';
+    }).join('')+'</div>';
+  }
+  h+='<div class="card" style="color:var(--faint);font-size:13.5px;line-height:1.6">Adding whole new drugs, and importing a CSV, arrives in step 3.</div>';
+  $('minebody').innerHTML=h;
 }
 
 /* ---------- not-yet views ---------- */
 var SOON={
-  infusions:['Infusions','Step 2','Your own dilution goes in — noradrenaline 4, 8 or 16 mg in 50 mL, whatever your unit draws up — and the mL/hr comes back. Sedation, analgesia, muscle relaxants and vasopressors all run on the same engine.'],
-  formulary:['Formulary','Step 2','The everyday ICU drug list, tagged by system rather than split into tabs, so a drug that belongs in three places is still written once.'],
   protocols:['Protocols','Step 3','Your unit protocols, written as steps with the cautions attached.'],
   disease:['Disease-wise','Step 3','What to start, by site of infection — pneumonia, UTI, meningitis, intra-abdominal. Tap a drug on the card and it opens at this patient\'s dose.'],
   theory:['Theory','Step 4','Bacteriology, mechanism-wise classes, spectrum grids and the steroid converter.']
@@ -834,6 +1229,14 @@ function drawSoon(k){
 /* ---------- boot ---------- */
 (function(){
   try{ var n=read('notes'); if(n) NOTES=JSON.parse(n)||{} }catch(e){}
+  /* notes written in step 1 had no section prefix — they were all antibiotics */
+  var migrated=false;
+  Object.keys(NOTES).forEach(function(k){
+    if(k.indexOf(':')<0){ NOTES['abx:'+k]=NOTES[k]; delete NOTES[k]; migrated=true }
+  });
+  if(migrated) save('notes', JSON.stringify(NOTES));
+  try{ var dl=read('dilutions'); if(dl) DIL=JSON.parse(dl)||{} }catch(e){}
+  var iw=read('iwt'); if(iw) S.iwt=iw;
   loadPatient();
   ['age','wt','ht','cr'].forEach(function(id){ $(id).addEventListener('input',refresh) });
   $('crunit').addEventListener('change',refresh);
